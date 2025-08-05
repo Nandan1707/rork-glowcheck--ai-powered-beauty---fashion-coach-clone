@@ -227,7 +227,7 @@ export default function CoachingScreen() {
             disabled={!selectedGoal || loading}
             isLoading={loading}
             style={styles.generateButton}
-            leftIcon={<Target size={18} color={COLORS.white} style={{ marginRight: 8 }} />}
+            leftIcon={<Target size={18} color={COLORS.white} />}
             testID="create-my-plan-button"
           />
         </View>

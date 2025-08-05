@@ -471,7 +471,7 @@ export default function GlowAnalysisScreen() {
             <Button
               title="Start Face Scan"
               onPress={toggleCamera}
-              leftIcon={<Camera size={18} color={COLORS.white} style={{ marginRight: 8 }} />}
+              leftIcon={<Camera size={18} color={COLORS.white} />}
               style={styles.button}
               testID="take-selfie-button"
             />
@@ -1099,7 +1099,7 @@ function PersonalizedRecommendations({ analysisResult, onClose, onStartCoaching 
               onPress={handleStartCoaching}
               disabled={!selectedRecommendation && (!showCustomInput || !customGoal.trim())}
               style={recommendationStyles.createButton}
-              leftIcon={<Sparkles size={18} color={COLORS.white} style={{ marginRight: 8 }} />}
+              leftIcon={<Sparkles size={18} color={COLORS.white} />}
               testID="create-plan-button"
             />
             <Button
