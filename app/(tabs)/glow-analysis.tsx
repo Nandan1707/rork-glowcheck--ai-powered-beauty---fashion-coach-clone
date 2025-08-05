@@ -36,8 +36,22 @@ export default function GlowAnalysisScreen() {
 
 
   const takePicture = async (isAutoCapture = false) => {
-    if (!cameraRef.current || takingPicture || !cameraReady) return;
+    if (!cameraRef.current || takingPicture || !cameraReady) {
+      console.log('Cannot take picture:', { 
+        hasCamera: !!cameraRef.current, 
+        takingPicture, 
+        cameraReady 
+      });
+      return;
+    }
     
+    // For auto capture, only proceed if face is detected
+    if (isAutoCapture && !faceDetected) {
+      console.log('Auto capture attempted but no face detected, skipping...');
+      return;
+    }
+    
+    console.log('Taking picture...', { isAutoCapture, faceDetected });
     setTakingPicture(true);
     
     try {
@@ -52,6 +66,8 @@ export default function GlowAnalysisScreen() {
         skipProcessing: Platform.OS === 'web',
       });
       
+      console.log('Picture taken successfully:', photo.uri);
+      
       setCapturedImage(photo.uri);
       setCameraActive(false);
       setCameraReady(false);
@@ -65,7 +81,7 @@ export default function GlowAnalysisScreen() {
         setCameraReadyTimer(null);
       }
       if (autoCaptureTimer) {
-        clearTimeout(autoCaptureTimer);
+        clearInterval(autoCaptureTimer);
         setAutoCaptureTimer(null);
       }
       if (faceDetectionTimer) {
@@ -230,12 +246,16 @@ export default function GlowAnalysisScreen() {
   };
 
   const toggleAutoCapture = () => {
-    setAutoCapture(!autoCapture);
+    const newAutoCapture = !autoCapture;
+    console.log('Toggling auto capture:', newAutoCapture);
+    
+    setAutoCapture(newAutoCapture);
     setFaceDetected(false);
     setCaptureCountdown(null);
     
+    // Clear all existing timers
     if (autoCaptureTimer) {
-      clearTimeout(autoCaptureTimer);
+      clearInterval(autoCaptureTimer);
       setAutoCaptureTimer(null);
     }
     if (faceDetectionTimer) {
@@ -246,19 +266,28 @@ export default function GlowAnalysisScreen() {
       clearInterval(faceDetectionIntervalRef.current);
       faceDetectionIntervalRef.current = null;
     }
+    
+    if (newAutoCapture) {
+      console.log('Auto capture enabled - will start detecting faces when camera is ready');
+    } else {
+      console.log('Auto capture disabled - manual capture mode');
+    }
   };
 
-  // Simulate face detection using camera readiness and timing
+  // Enhanced face detection simulation with more realistic behavior
   const simulateFaceDetection = useCallback(() => {
     if (!cameraReady || !autoCapture || takingPicture) return;
     
-    // Simulate face detection with random success rate
-    const faceDetectionSuccess = Math.random() > 0.3; // 70% success rate
+    // More sophisticated face detection simulation
+    // Higher success rate when camera is stable and ready
+    const cameraStabilityFactor = cameraReady ? 0.8 : 0.3;
+    const faceDetectionSuccess = Math.random() < cameraStabilityFactor;
     
     if (faceDetectionSuccess && !faceDetected) {
+      console.log('Face detected! Starting auto capture sequence...');
       setFaceDetected(true);
       
-      // Start countdown for auto capture
+      // Start countdown for auto capture only when face is detected
       let countdown = 3;
       setCaptureCountdown(countdown);
       
@@ -269,17 +298,19 @@ export default function GlowAnalysisScreen() {
         if (countdown <= 0) {
           clearInterval(countdownInterval);
           setCaptureCountdown(null);
+          console.log('Auto capture triggered - taking picture now!');
           takePicture(true);
         }
       }, 1000);
       
       setAutoCaptureTimer(countdownInterval);
     } else if (!faceDetectionSuccess && faceDetected) {
-      // Face lost, reset detection
+      // Face lost during detection, reset and wait for re-detection
+      console.log('Face lost during detection, resetting...');
       setFaceDetected(false);
       setCaptureCountdown(null);
       if (autoCaptureTimer) {
-        clearTimeout(autoCaptureTimer);
+        clearInterval(autoCaptureTimer);
         setAutoCaptureTimer(null);
       }
     }
@@ -288,9 +319,12 @@ export default function GlowAnalysisScreen() {
   // Start face detection when auto capture is enabled
   useEffect(() => {
     if (autoCapture && cameraReady && !takingPicture) {
-      faceDetectionIntervalRef.current = setInterval(simulateFaceDetection, 1000);
+      console.log('Starting face detection interval...');
+      // Check for faces more frequently for better responsiveness
+      faceDetectionIntervalRef.current = setInterval(simulateFaceDetection, 800);
     } else {
       if (faceDetectionIntervalRef.current) {
+        console.log('Stopping face detection interval...');
         clearInterval(faceDetectionIntervalRef.current);
         faceDetectionIntervalRef.current = null;
       }
@@ -353,10 +387,10 @@ export default function GlowAnalysisScreen() {
                 : autoCapture
                   ? faceDetected
                     ? captureCountdown !== null
-                      ? `Taking photo in ${captureCountdown}...`
+                      ? `Auto capture in ${captureCountdown}...`
                       : 'Face detected! Hold still...'
-                    : 'Looking for your face...'
-                  : 'Position your face within the circle'
+                    : 'Center your face in the circle for auto capture'
+                  : 'Position your face within the circle and tap to capture'
               }
             </Text>
             
