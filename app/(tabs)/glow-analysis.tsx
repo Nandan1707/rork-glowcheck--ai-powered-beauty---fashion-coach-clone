@@ -1,7 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, ActivityIndicator, Platform, TextInput, Alert } from 'react-native';
 import { CameraView, CameraType } from 'expo-camera';
-import { Camera, RefreshCw, Info, Target, Sparkles, Crown } from 'lucide-react-native';
+import { Camera, RefreshCw, Info, Target, Sparkles, Crown, Eye, EyeOff } from 'lucide-react-native';
 import { Stack, router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -24,12 +24,18 @@ export default function GlowAnalysisScreen() {
   const [cameraReady, setCameraReady] = useState(false);
   const [takingPicture, setTakingPicture] = useState(false);
   const [cameraReadyTimer, setCameraReadyTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const [autoCapture, setAutoCapture] = useState(false);
+  const [faceDetected, setFaceDetected] = useState(false);
+  const [captureCountdown, setCaptureCountdown] = useState<number | null>(null);
+  const [autoCaptureTimer, setAutoCaptureTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const [faceDetectionTimer, setFaceDetectionTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   
   const cameraRef = useRef<any>(null);
+  const faceDetectionIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
 
 
-  const takePicture = async () => {
+  const takePicture = async (isAutoCapture = false) => {
     if (!cameraRef.current || takingPicture || !cameraReady) return;
     
     setTakingPicture(true);
@@ -49,10 +55,28 @@ export default function GlowAnalysisScreen() {
       setCapturedImage(photo.uri);
       setCameraActive(false);
       setCameraReady(false);
+      setAutoCapture(false);
+      setFaceDetected(false);
+      setCaptureCountdown(null);
+      
+      // Clear all timers
       if (cameraReadyTimer) {
         clearTimeout(cameraReadyTimer);
         setCameraReadyTimer(null);
       }
+      if (autoCaptureTimer) {
+        clearTimeout(autoCaptureTimer);
+        setAutoCaptureTimer(null);
+      }
+      if (faceDetectionTimer) {
+        clearTimeout(faceDetectionTimer);
+        setFaceDetectionTimer(null);
+      }
+      if (faceDetectionIntervalRef.current) {
+        clearInterval(faceDetectionIntervalRef.current);
+        faceDetectionIntervalRef.current = null;
+      }
+      
       analyzeImage(photo.uri);
     } catch (error) {
       console.error('Error taking picture:', error);
@@ -145,10 +169,27 @@ export default function GlowAnalysisScreen() {
       setCameraActive(!cameraActive);
       if (!cameraActive) {
         setCameraReady(false);
-        // Clear any existing timer
+        setAutoCapture(false);
+        setFaceDetected(false);
+        setCaptureCountdown(null);
+        
+        // Clear any existing timers
         if (cameraReadyTimer) {
           clearTimeout(cameraReadyTimer);
         }
+        if (autoCaptureTimer) {
+          clearTimeout(autoCaptureTimer);
+          setAutoCaptureTimer(null);
+        }
+        if (faceDetectionTimer) {
+          clearTimeout(faceDetectionTimer);
+          setFaceDetectionTimer(null);
+        }
+        if (faceDetectionIntervalRef.current) {
+          clearInterval(faceDetectionIntervalRef.current);
+          faceDetectionIntervalRef.current = null;
+        }
+        
         // Set camera ready after a longer delay for web
         const timer = setTimeout(() => {
           setCameraReady(true);
@@ -156,9 +197,22 @@ export default function GlowAnalysisScreen() {
         }, Platform.OS === 'web' ? 3000 : 1000);
         setCameraReadyTimer(timer);
       } else {
+        // Clear all timers when closing camera
         if (cameraReadyTimer) {
           clearTimeout(cameraReadyTimer);
           setCameraReadyTimer(null);
+        }
+        if (autoCaptureTimer) {
+          clearTimeout(autoCaptureTimer);
+          setAutoCaptureTimer(null);
+        }
+        if (faceDetectionTimer) {
+          clearTimeout(faceDetectionTimer);
+          setFaceDetectionTimer(null);
+        }
+        if (faceDetectionIntervalRef.current) {
+          clearInterval(faceDetectionIntervalRef.current);
+          faceDetectionIntervalRef.current = null;
         }
       }
     }
@@ -166,7 +220,99 @@ export default function GlowAnalysisScreen() {
 
   const toggleCameraFacing = () => {
     setFacing(current => (current === 'back' ? 'front' : 'back'));
+    // Reset face detection when switching cameras
+    setFaceDetected(false);
+    setCaptureCountdown(null);
+    if (autoCaptureTimer) {
+      clearTimeout(autoCaptureTimer);
+      setAutoCaptureTimer(null);
+    }
   };
+
+  const toggleAutoCapture = () => {
+    setAutoCapture(!autoCapture);
+    setFaceDetected(false);
+    setCaptureCountdown(null);
+    
+    if (autoCaptureTimer) {
+      clearTimeout(autoCaptureTimer);
+      setAutoCaptureTimer(null);
+    }
+    if (faceDetectionTimer) {
+      clearTimeout(faceDetectionTimer);
+      setFaceDetectionTimer(null);
+    }
+    if (faceDetectionIntervalRef.current) {
+      clearInterval(faceDetectionIntervalRef.current);
+      faceDetectionIntervalRef.current = null;
+    }
+  };
+
+  // Simulate face detection using camera readiness and timing
+  const simulateFaceDetection = useCallback(() => {
+    if (!cameraReady || !autoCapture || takingPicture) return;
+    
+    // Simulate face detection with random success rate
+    const faceDetectionSuccess = Math.random() > 0.3; // 70% success rate
+    
+    if (faceDetectionSuccess && !faceDetected) {
+      setFaceDetected(true);
+      
+      // Start countdown for auto capture
+      let countdown = 3;
+      setCaptureCountdown(countdown);
+      
+      const countdownInterval = setInterval(() => {
+        countdown -= 1;
+        setCaptureCountdown(countdown);
+        
+        if (countdown <= 0) {
+          clearInterval(countdownInterval);
+          setCaptureCountdown(null);
+          takePicture(true);
+        }
+      }, 1000);
+      
+      setAutoCaptureTimer(countdownInterval);
+    } else if (!faceDetectionSuccess && faceDetected) {
+      // Face lost, reset detection
+      setFaceDetected(false);
+      setCaptureCountdown(null);
+      if (autoCaptureTimer) {
+        clearTimeout(autoCaptureTimer);
+        setAutoCaptureTimer(null);
+      }
+    }
+  }, [cameraReady, autoCapture, takingPicture, faceDetected, autoCaptureTimer]);
+
+  // Start face detection when auto capture is enabled
+  useEffect(() => {
+    if (autoCapture && cameraReady && !takingPicture) {
+      faceDetectionIntervalRef.current = setInterval(simulateFaceDetection, 1000);
+    } else {
+      if (faceDetectionIntervalRef.current) {
+        clearInterval(faceDetectionIntervalRef.current);
+        faceDetectionIntervalRef.current = null;
+      }
+    }
+    
+    return () => {
+      if (faceDetectionIntervalRef.current) {
+        clearInterval(faceDetectionIntervalRef.current);
+        faceDetectionIntervalRef.current = null;
+      }
+    };
+  }, [autoCapture, cameraReady, takingPicture, simulateFaceDetection]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (cameraReadyTimer) clearTimeout(cameraReadyTimer);
+      if (autoCaptureTimer) clearTimeout(autoCaptureTimer);
+      if (faceDetectionTimer) clearTimeout(faceDetectionTimer);
+      if (faceDetectionIntervalRef.current) clearInterval(faceDetectionIntervalRef.current);
+    };
+  }, []);
 
   if (cameraActive) {
     return (
@@ -186,14 +332,56 @@ export default function GlowAnalysisScreen() {
         >
           <View style={styles.cameraOverlay}>
             <View style={styles.cameraGuide}>
-              <View style={styles.cameraGuideCircle} />
+              <View style={[
+                styles.cameraGuideCircle,
+                faceDetected && styles.cameraGuideCircleDetected
+              ]} />
+              {faceDetected && (
+                <View style={styles.faceDetectedIndicator}>
+                  <Eye size={24} color={COLORS.success} />
+                </View>
+              )}
+              {captureCountdown !== null && (
+                <View style={styles.countdownContainer}>
+                  <Text style={styles.countdownText}>{captureCountdown}</Text>
+                </View>
+              )}
             </View>
             <Text style={styles.cameraInstructions}>
               {!cameraReady 
                 ? 'Preparing camera...' 
-                : 'Position your face within the circle'
+                : autoCapture
+                  ? faceDetected
+                    ? captureCountdown !== null
+                      ? `Taking photo in ${captureCountdown}...`
+                      : 'Face detected! Hold still...'
+                    : 'Looking for your face...'
+                  : 'Position your face within the circle'
               }
             </Text>
+            
+            {/* Auto capture toggle */}
+            <TouchableOpacity 
+              style={styles.autoCaptureToggle}
+              onPress={toggleAutoCapture}
+            >
+              <View style={[
+                styles.autoCaptureToggleButton,
+                autoCapture && styles.autoCaptureToggleButtonActive
+              ]}>
+                {autoCapture ? (
+                  <Eye size={20} color={COLORS.white} />
+                ) : (
+                  <EyeOff size={20} color={COLORS.textLight} />
+                )}
+              </View>
+              <Text style={[
+                styles.autoCaptureToggleText,
+                autoCapture && styles.autoCaptureToggleTextActive
+              ]}>
+                Auto Capture
+              </Text>
+            </TouchableOpacity>
           </View>
           <View style={styles.cameraControls}>
             <TouchableOpacity 
@@ -203,9 +391,9 @@ export default function GlowAnalysisScreen() {
               <RefreshCw color={COLORS.white} size={24} />
             </TouchableOpacity>
             <TouchableOpacity 
-              style={[styles.captureButton, (!cameraReady || takingPicture) && styles.captureButtonDisabled]} 
-              onPress={takePicture}
-              disabled={!cameraReady || takingPicture}
+              style={[styles.captureButton, (!cameraReady || takingPicture || autoCapture) && styles.captureButtonDisabled]} 
+              onPress={() => takePicture(false)}
+              disabled={!cameraReady || takingPicture || autoCapture}
             >
               {takingPicture ? (
                 <ActivityIndicator size="small" color={COLORS.white} />
@@ -481,6 +669,67 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderStyle: 'dashed',
     borderColor: COLORS.white,
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cameraGuideCircleDetected: {
+    borderColor: COLORS.success,
+    borderWidth: 3,
+  },
+  faceDetectedIndicator: {
+    position: 'absolute',
+    top: -15,
+    right: -15,
+    backgroundColor: COLORS.success,
+    borderRadius: 20,
+    padding: 8,
+    borderWidth: 2,
+    borderColor: COLORS.white,
+  },
+  countdownContainer: {
+    position: 'absolute',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 40,
+    width: 80,
+    height: 80,
+  },
+  countdownText: {
+    color: COLORS.white,
+    fontSize: 32,
+    fontWeight: 'bold',
+  },
+  autoCaptureToggle: {
+    position: 'absolute',
+    top: 60,
+    right: 20,
+    alignItems: 'center',
+  },
+  autoCaptureToggleButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  autoCaptureToggleButtonActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  autoCaptureToggleText: {
+    color: COLORS.textLight,
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  autoCaptureToggleTextActive: {
+    color: COLORS.white,
   },
   cameraInstructions: {
     color: COLORS.white,
