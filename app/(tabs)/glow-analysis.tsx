@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, ActivityIndicator, Platform, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, ActivityIndicator, Platform, TextInput, Alert, Animated } from 'react-native';
 import { CameraView, CameraType } from 'expo-camera';
 import { Camera, RefreshCw, Info, Target, Sparkles, Crown } from 'lucide-react-native';
 import { Stack, router } from 'expo-router';
@@ -31,6 +31,13 @@ export default function GlowAnalysisScreen() {
   const [facePosition, setFacePosition] = useState<{x: number, y: number, width: number, height: number} | null>(null);
   const [faceDetectionTimer, setFaceDetectionTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   const [lastFaceDetectionTime, setLastFaceDetectionTime] = useState<number>(0);
+  const [faceLostTimeout, setFaceLostTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const [faceDetectionMessage, setFaceDetectionMessage] = useState('Preparing camera...');
+  
+  // Animation values
+  const buttonOpacity = useRef(new Animated.Value(0)).current;
+  const borderAnimation = useRef(new Animated.Value(0)).current;
+  const pulseAnimation = useRef(new Animated.Value(1)).current;
   
   const cameraRef = useRef<any>(null);
   const faceDetectionIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -38,7 +45,17 @@ export default function GlowAnalysisScreen() {
 
 
   const takePicture = async () => {
-    if (!cameraRef.current || takingPicture || !cameraReady || !faceDetected) {
+    // Strict guard clause - NEVER take photo without face detection
+    if (!faceDetected) {
+      console.log('Photo capture blocked: No face detected');
+      if (Platform.OS !== 'web') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
+      Alert.alert('No Face Detected', 'Please align your face within the guide circle before taking a photo.');
+      return;
+    }
+    
+    if (!cameraRef.current || takingPicture || !cameraReady) {
       console.log('Cannot take picture:', { 
         hasCamera: !!cameraRef.current, 
         takingPicture, 
@@ -65,11 +82,17 @@ export default function GlowAnalysisScreen() {
       
       console.log('Picture taken successfully:', photo.uri);
       
+      // Success haptic feedback
+      if (Platform.OS !== 'web') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+      
       setCapturedImage(photo.uri);
       setCameraActive(false);
       setCameraReady(false);
       setFaceDetected(false);
       setFacePosition(null);
+      setFaceDetectionMessage('Preparing camera...');
       
       // Clear all timers
       if (cameraReadyTimer) {
@@ -79,6 +102,10 @@ export default function GlowAnalysisScreen() {
       if (faceDetectionTimer) {
         clearTimeout(faceDetectionTimer);
         setFaceDetectionTimer(null);
+      }
+      if (faceLostTimeout) {
+        clearTimeout(faceLostTimeout);
+        setFaceLostTimeout(null);
       }
       if (faceDetectionIntervalRef.current) {
         clearInterval(faceDetectionIntervalRef.current);
@@ -188,6 +215,10 @@ export default function GlowAnalysisScreen() {
           clearTimeout(faceDetectionTimer);
           setFaceDetectionTimer(null);
         }
+        if (faceLostTimeout) {
+          clearTimeout(faceLostTimeout);
+          setFaceLostTimeout(null);
+        }
         if (faceDetectionIntervalRef.current) {
           clearInterval(faceDetectionIntervalRef.current);
           faceDetectionIntervalRef.current = null;
@@ -209,6 +240,10 @@ export default function GlowAnalysisScreen() {
           clearTimeout(faceDetectionTimer);
           setFaceDetectionTimer(null);
         }
+        if (faceLostTimeout) {
+          clearTimeout(faceLostTimeout);
+          setFaceLostTimeout(null);
+        }
         if (faceDetectionIntervalRef.current) {
           clearInterval(faceDetectionIntervalRef.current);
           faceDetectionIntervalRef.current = null;
@@ -222,11 +257,18 @@ export default function GlowAnalysisScreen() {
     // Reset face detection when switching cameras
     setFaceDetected(false);
     setFacePosition(null);
+    setFaceDetectionMessage('Preparing camera...');
+    
+    // Clear face lost timeout
+    if (faceLostTimeout) {
+      clearTimeout(faceLostTimeout);
+      setFaceLostTimeout(null);
+    }
   };
 
 
 
-  // Enhanced face detection simulation with realistic behavior and positioning
+  // Enhanced face detection simulation with strict requirements
   const simulateFaceDetection = useCallback(() => {
     if (!cameraReady || takingPicture) return;
     
@@ -234,7 +276,7 @@ export default function GlowAnalysisScreen() {
     
     // More sophisticated face detection simulation
     // Higher success rate when camera is stable and ready
-    const cameraStabilityFactor = cameraReady ? 0.75 : 0.2;
+    const cameraStabilityFactor = cameraReady ? 0.8 : 0.2;
     const faceDetectionSuccess = Math.random() < cameraStabilityFactor;
     
     if (faceDetectionSuccess && !faceDetected) {
@@ -259,6 +301,43 @@ export default function GlowAnalysisScreen() {
       setFaceDetected(true);
       setFacePosition(facePos);
       setLastFaceDetectionTime(now);
+      setFaceDetectionMessage('Face detected! Tap to take photo.');
+      
+      // Clear any existing face lost timeout
+      if (faceLostTimeout) {
+        clearTimeout(faceLostTimeout);
+        setFaceLostTimeout(null);
+      }
+      
+      // Animate button appearance and border
+      Animated.parallel([
+        Animated.timing(buttonOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(borderAnimation, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: false,
+        }),
+      ]).start();
+      
+      // Start pulse animation
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnimation, {
+            toValue: 1.1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnimation, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
       
       // Haptic feedback when face is detected (mobile only)
       if (Platform.OS !== 'web') {
@@ -266,13 +345,42 @@ export default function GlowAnalysisScreen() {
       }
       
     } else if (!faceDetectionSuccess && faceDetected) {
-      // Only lose face detection if it's been a while since last detection
-      if (now - lastFaceDetectionTime > 2000) {
-        console.log('Face lost...');
-        setFaceDetected(false);
-        setFacePosition(null);
+      // Use faceLostTimeout to wait 1.5 seconds before setting faceDetected to false
+      if (!faceLostTimeout) {
+        const timeout = setTimeout(() => {
+          console.log('Face lost after timeout...');
+          setFaceDetected(false);
+          setFacePosition(null);
+          setFaceDetectionMessage('No face detected. Please align your face.');
+          setFaceLostTimeout(null);
+          
+          // Animate button disappearance
+          Animated.parallel([
+            Animated.timing(buttonOpacity, {
+              toValue: 0,
+              duration: 200,
+              useNativeDriver: true,
+            }),
+            Animated.timing(borderAnimation, {
+              toValue: 0,
+              duration: 200,
+              useNativeDriver: false,
+            }),
+          ]).start();
+          
+          // Stop pulse animation
+          pulseAnimation.stopAnimation();
+          pulseAnimation.setValue(1);
+        }, 1500);
+        setFaceLostTimeout(timeout);
       }
     } else if (faceDetectionSuccess && faceDetected) {
+      // Face is still detected, clear any pending timeout
+      if (faceLostTimeout) {
+        clearTimeout(faceLostTimeout);
+        setFaceLostTimeout(null);
+      }
+      
       // Update face position slightly for natural movement
       if (facePosition) {
         const newPosition = {
@@ -284,14 +392,15 @@ export default function GlowAnalysisScreen() {
         setLastFaceDetectionTime(now);
       }
     }
-  }, [cameraReady, takingPicture, faceDetected, facePosition, lastFaceDetectionTime]);
+  }, [cameraReady, takingPicture, faceDetected, facePosition, lastFaceDetectionTime, faceLostTimeout, buttonOpacity, borderAnimation, pulseAnimation]);
 
   // Start face detection when camera is ready
   useEffect(() => {
     if (cameraReady && !takingPicture) {
       console.log('Starting face detection interval...');
+      setFaceDetectionMessage('Looking for face...');
       // Check for faces more frequently for better responsiveness
-      faceDetectionIntervalRef.current = setInterval(simulateFaceDetection, 600);
+      faceDetectionIntervalRef.current = setInterval(simulateFaceDetection, 500);
     } else {
       if (faceDetectionIntervalRef.current) {
         console.log('Stopping face detection interval...');
@@ -313,6 +422,7 @@ export default function GlowAnalysisScreen() {
     return () => {
       if (cameraReadyTimer) clearTimeout(cameraReadyTimer);
       if (faceDetectionTimer) clearTimeout(faceDetectionTimer);
+      if (faceLostTimeout) clearTimeout(faceLostTimeout);
       if (faceDetectionIntervalRef.current) clearInterval(faceDetectionIntervalRef.current);
     };
   }, []);
@@ -334,16 +444,41 @@ export default function GlowAnalysisScreen() {
           }}
         >
           <View style={styles.cameraOverlay}>
-            <View style={styles.cameraGuide}>
-              <View style={styles.cameraGuideCircle} />
-            </View>
-            <Text style={styles.cameraInstructions}>
-              {!cameraReady 
-                ? 'Preparing camera...' 
-                : faceDetected
-                  ? 'Face detected! Tap to take photo.'
-                  : 'No face detected. Please align your face.'
+            <Animated.View style={[
+              styles.cameraGuide,
+              {
+                borderColor: borderAnimation.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [COLORS.white, COLORS.success],
+                }),
+                transform: [{ scale: pulseAnimation }],
               }
+            ]}>
+              <View style={[
+                styles.cameraGuideCircle,
+                {
+                  borderColor: faceDetected ? COLORS.success : COLORS.white,
+                }
+              ]} />
+              {faceDetected && (
+                <View style={[
+                  styles.faceIndicator,
+                  {
+                    left: facePosition?.x || 0,
+                    top: facePosition?.y || 0,
+                    width: facePosition?.width || 80,
+                    height: facePosition?.height || 80,
+                  }
+                ]} />
+              )}
+            </Animated.View>
+            <Text style={[
+              styles.cameraInstructions,
+              {
+                color: faceDetected ? COLORS.success : COLORS.white,
+              }
+            ]}>
+              {!cameraReady ? 'Preparing camera...' : faceDetectionMessage}
             </Text>
           </View>
           <View style={styles.cameraControls}>
@@ -353,24 +488,33 @@ export default function GlowAnalysisScreen() {
             >
               <RefreshCw color={COLORS.white} size={24} />
             </TouchableOpacity>
-            {faceDetected ? (
+            <Animated.View style={[
+              styles.captureButton,
+              {
+                opacity: faceDetected ? buttonOpacity : 0.3,
+                transform: [{ scale: faceDetected ? 1 : 0.8 }],
+              }
+            ]}>
               <TouchableOpacity 
                 style={[
-                  styles.captureButton, 
-                  takingPicture && styles.captureButtonDisabled
+                  styles.captureButtonTouchable,
+                  takingPicture && styles.captureButtonDisabled,
+                  !faceDetected && styles.captureButtonBlocked
                 ]} 
                 onPress={takePicture}
-                disabled={takingPicture}
+                disabled={takingPicture || !faceDetected}
+                activeOpacity={faceDetected ? 0.7 : 1}
               >
                 {takingPicture ? (
                   <ActivityIndicator size="small" color={COLORS.white} />
                 ) : (
-                  <View style={[styles.captureButtonInner, styles.captureButtonInnerActive]} />
+                  <View style={[
+                    styles.captureButtonInner, 
+                    faceDetected && styles.captureButtonInnerActive
+                  ]} />
                 )}
               </TouchableOpacity>
-            ) : (
-              <View style={[styles.captureButton, styles.captureButtonHidden]} />
-            )}
+            </Animated.View>
             <TouchableOpacity 
               style={styles.cameraButton} 
               onPress={() => setCameraActive(false)}
@@ -627,11 +771,12 @@ const styles = StyleSheet.create({
     width: 250,
     height: 250,
     borderRadius: 125,
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: COLORS.white,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
+    position: 'relative',
   },
   cameraGuideCircle: {
     width: 230,
@@ -643,6 +788,13 @@ const styles = StyleSheet.create({
     position: 'relative',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  faceIndicator: {
+    position: 'absolute',
+    borderWidth: 2,
+    borderColor: COLORS.success,
+    borderRadius: 40,
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
   },
 
   cameraInstructions: {
@@ -665,26 +817,33 @@ const styles = StyleSheet.create({
     width: 70,
     height: 70,
     borderRadius: 35,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  captureButtonTouchable: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 35,
     backgroundColor: 'rgba(255, 255, 255, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  captureButtonBlocked: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   captureButtonInner: {
     width: 60,
     height: 60,
     borderRadius: 30,
     backgroundColor: COLORS.white,
-    opacity: 0.5,
+    opacity: 0.3,
   },
   captureButtonInnerActive: {
     opacity: 1,
     backgroundColor: COLORS.success,
   },
   captureButtonDisabled: {
-    opacity: 0.3,
-  },
-  captureButtonHidden: {
-    opacity: 0,
+    opacity: 0.5,
   },
   cancelText: {
     color: COLORS.white,
