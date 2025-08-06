@@ -11,6 +11,7 @@ interface ProgressBarProps {
   showPercentage?: boolean;
   style?: ViewStyle;
   testID?: string;
+  color?: string;
 }
 
 export const ProgressBar: React.FC<ProgressBarProps> = ({
@@ -20,6 +21,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   showPercentage = false,
   style,
   testID,
+  color,
 }) => {
   // Ensure progress is between 0 and 100
   const clampedProgress = Math.min(Math.max(progress, 0), 100);
@@ -34,7 +36,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
       )}
       <View style={[styles.track, { height }]}>
         <LinearGradient
-          colors={GRADIENTS.primary}
+          colors={color ? [color, color] : GRADIENTS.primary}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={[

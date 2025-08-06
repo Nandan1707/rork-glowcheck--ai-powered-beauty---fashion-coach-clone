@@ -16,6 +16,7 @@ export interface GlowAnalysis {
   brightness: number;
   hydration: number;
   symmetry: number;
+  symmetryScore: number;
   tips: string[];
 }
 

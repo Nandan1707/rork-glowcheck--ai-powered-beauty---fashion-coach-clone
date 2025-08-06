@@ -664,7 +664,7 @@ export default function GlowAnalysisScreen() {
               
               <Text style={styles.metricsLabel}>Facial Symmetry</Text>
               <ProgressBar 
-                progress={analysisResult?.symmetryScore || analysisResult?.symmetry || 0} 
+                progress={analysisResult?.symmetryScore || 0} 
                 height={10}
                 showPercentage
                 color={COLORS.success}
@@ -755,15 +755,10 @@ export default function GlowAnalysisScreen() {
       <PremiumModal
         visible={showPremiumModal}
         onClose={() => setShowPremiumModal(false)}
-        title="Unlock Your Personalized Plan"
-        subtitle="Subscribe to premium to access your full 30-day routine."
-        features={[
-          'Personalized 30-day glow-up plans',
-          'AI-powered beauty coaching',
-          'Daily progress tracking',
-          'Unlimited face analysis',
-          'Premium skincare recommendations'
-        ]}
+        onUpgrade={async () => {
+          // TODO: Implement subscription upgrade
+          console.log('Upgrading to premium...');
+        }}
       />
     </ScrollView>
   );
