@@ -9,12 +9,14 @@ import * as Haptics from 'expo-haptics';
 import Button from '@/components/Button';
 import Card from '@/components/Card';
 import ProgressBar from '@/components/ProgressBar';
+import PremiumModal from '@/components/PremiumModal';
 import { COLORS } from '@/constants/colors';
 import { aiService, GlowAnalysisResult } from '@/lib/ai-service';
 import { useAuth } from '@/hooks/auth-store';
 
 export default function GlowAnalysisScreen() {
-  const { checkPremiumAccess } = useAuth();
+  const { checkPremiumAccess, isPremium, startFreeTrial, subscriptionLoading } = useAuth();
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [permission, requestPermission] = useCameraPermissions();
   const [cameraActive, setCameraActive] = useState(false);
   const [facing, setFacing] = useState<CameraType>('front');
@@ -552,7 +554,8 @@ export default function GlowAnalysisScreen() {
           analysisResult={analysisResult}
           onClose={() => setShowRecommendations(false)}
           onStartCoaching={(goal: string) => {
-            if (!checkPremiumAccess('Personalized Coaching Plans')) {
+            if (!isPremium) {
+              setShowPremiumModal(true);
               return;
             }
             router.push({

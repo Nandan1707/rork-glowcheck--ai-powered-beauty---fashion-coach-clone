@@ -6,14 +6,17 @@ import { router } from 'expo-router';
 import { Alert } from 'react-native';
 
 import { supabase, signIn, signUp, signOut, getCurrentUser } from '@/lib/supabase';
+import { subscriptionService, SubscriptionStatus } from '@/lib/subscription-service';
 import { User } from '@/types';
 
 export const [AuthContext, useAuth] = createContextHook(() => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus>({ isActive: false });
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
   const queryClient = useQueryClient();
 
-  // Check for existing session on mount
+  // Check for existing session and subscription status on mount
   useEffect(() => {
     const checkSession = async () => {
       try {
@@ -33,6 +36,10 @@ export const [AuthContext, useAuth] = createContextHook(() => {
             avatar_url: data?.avatar_url,
             subscription_tier: data?.subscription_tier || 'free',
           });
+          
+          // Check subscription status
+          const subStatus = await subscriptionService.getSubscriptionStatus();
+          setSubscriptionStatus(subStatus);
         }
       } catch (error) {
         console.error('Error checking session:', error);
@@ -61,8 +68,13 @@ export const [AuthContext, useAuth] = createContextHook(() => {
             avatar_url: data?.avatar_url,
             subscription_tier: data?.subscription_tier || 'free',
           });
+          
+          // Check subscription status
+          const subStatus = await subscriptionService.getSubscriptionStatus();
+          setSubscriptionStatus(subStatus);
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
+          setSubscriptionStatus({ isActive: false });
         }
       }
     );
@@ -118,28 +130,90 @@ export const [AuthContext, useAuth] = createContextHook(() => {
     },
   });
 
-  const upgradeToPremium = async () => {
-    if (!user) return;
+  const startFreeTrial = async (): Promise<{ success: boolean; error?: string }> => {
+    if (!user) {
+      return { success: false, error: 'Please log in to start your free trial.' };
+    }
+    
+    setSubscriptionLoading(true);
     
     try {
-      const { error } = await supabase
-        .from('users')
-        .update({ subscription_tier: 'premium' })
-        .eq('id', user.id);
-        
-      if (error) throw error;
+      const result = await subscriptionService.startFreeTrial();
       
-      setUser({ ...user, subscription_tier: 'premium' });
-      Alert.alert('Success', 'Welcome to Premium! Enjoy unlimited access to all features.');
+      if (result.success) {
+        // Update subscription status
+        const newStatus = await subscriptionService.getSubscriptionStatus();
+        setSubscriptionStatus(newStatus);
+        
+        // Update user in database
+        await supabase
+          .from('users')
+          .update({ subscription_tier: 'premium' })
+          .eq('id', user.id);
+          
+        setUser({ ...user, subscription_tier: 'premium' });
+      }
+      
+      return result;
     } catch (error) {
-      console.error('Error upgrading to premium:', error);
-      Alert.alert('Error', 'Failed to upgrade to premium. Please try again.');
+      console.error('Error starting free trial:', error);
+      return { success: false, error: 'Failed to start free trial. Please try again.' };
+    } finally {
+      setSubscriptionLoading(false);
     }
   };
   
-  const checkPremiumAccess = (feature: string, allowDemo: boolean = true): boolean => {
+  const subscribeToPlan = async (planId: string): Promise<{ success: boolean; error?: string }> => {
+    if (!user) {
+      return { success: false, error: 'Please log in to subscribe.' };
+    }
+    
+    setSubscriptionLoading(true);
+    
+    try {
+      const result = await subscriptionService.subscribeToPlan(planId);
+      
+      if (result.success) {
+        // Update subscription status
+        const newStatus = await subscriptionService.getSubscriptionStatus();
+        setSubscriptionStatus(newStatus);
+        
+        // Update user in database
+        await supabase
+          .from('users')
+          .update({ subscription_tier: 'premium' })
+          .eq('id', user.id);
+          
+        setUser({ ...user, subscription_tier: 'premium' });
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Error subscribing to plan:', error);
+      return { success: false, error: 'Subscription failed. Please try again.' };
+    } finally {
+      setSubscriptionLoading(false);
+    }
+  };
+  
+  const upgradeToPremium = async () => {
+    const result = await startFreeTrial();
+    
+    if (result.success) {
+      const remainingDays = await subscriptionService.getRemainingTrialDays();
+      Alert.alert(
+        'Free Trial Started! 🎉',
+        `Welcome to Premium! You have ${remainingDays} days of free access to all premium features.`,
+        [{ text: 'Get Started', style: 'default' }]
+      );
+    } else {
+      Alert.alert('Error', result.error || 'Failed to start free trial. Please try again.');
+    }
+  };
+  
+  const checkPremiumAccess = (feature: string, allowDemo: boolean = false): boolean => {
     if (!user) return false;
-    if (user.subscription_tier === 'premium') return true;
+    if (subscriptionStatus.isActive) return true;
     
     // Allow demo access for coaching plans to test functionality
     if (allowDemo && feature === 'Personalized Coaching Plans') {
@@ -148,31 +222,27 @@ export const [AuthContext, useAuth] = createContextHook(() => {
         'You\'re using the demo version of this premium feature. Upgrade to Premium for unlimited access and advanced AI features.',
         [
           { text: 'Continue Demo', style: 'default' },
-          { text: 'Upgrade Now', onPress: upgradeToPremium },
+          { text: 'Start Free Trial', onPress: upgradeToPremium },
         ]
       );
       return true; // Allow demo access
     }
     
-    Alert.alert(
-      'Premium Feature',
-      `${feature} is a premium feature. Upgrade to Premium to unlock unlimited access to personalized coaching plans and advanced AI features.`,
-      [
-        { text: 'Maybe Later', style: 'cancel' },
-        { text: 'Upgrade Now', onPress: upgradeToPremium },
-      ]
-    );
-    return false;
+    return false; // Don't show alert here, let the calling component handle it
   };
 
   return {
     user,
     isLoading,
     isAuthenticated: !!user,
-    isPremium: user?.subscription_tier === 'premium',
+    isPremium: subscriptionStatus.isActive,
+    subscriptionStatus,
+    subscriptionLoading,
     login: loginMutation.mutate,
     register: registerMutation.mutate,
     logout: logoutMutation.mutate,
+    startFreeTrial,
+    subscribeToPlan,
     upgradeToPremium,
     checkPremiumAccess,
     loginError: loginMutation.error,

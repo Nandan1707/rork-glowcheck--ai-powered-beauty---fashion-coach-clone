@@ -15,13 +15,28 @@ import { COLORS } from '@/constants/colors';
 interface PremiumModalProps {
   visible: boolean;
   onClose: () => void;
-  onUpgrade: () => void;
+  onUpgrade: () => Promise<void>;
   isLoading?: boolean;
+  onSuccess?: () => void;
 }
 
 
 
-export default function PremiumModal({ visible, onClose, onUpgrade, isLoading = false }: PremiumModalProps) {
+export default function PremiumModal({ visible, onClose, onUpgrade, isLoading = false, onSuccess }: PremiumModalProps) {
+  const [upgrading, setUpgrading] = React.useState(false);
+  
+  const handleUpgrade = async () => {
+    setUpgrading(true);
+    try {
+      await onUpgrade();
+      onSuccess?.();
+      onClose();
+    } catch (error) {
+      console.error('Upgrade failed:', error);
+    } finally {
+      setUpgrading(false);
+    }
+  };
   const features = [
     {
       icon: <Sparkles size={20} color={COLORS.gold} />,
@@ -115,10 +130,10 @@ export default function PremiumModal({ visible, onClose, onUpgrade, isLoading = 
 
         <View style={styles.footer}>
           <Button
-            title={isLoading ? 'Processing...' : 'Start Free Trial'}
-            onPress={onUpgrade}
-            disabled={isLoading}
-            isLoading={isLoading}
+            title={(isLoading || upgrading) ? 'Starting Trial...' : 'Start Free Trial'}
+            onPress={handleUpgrade}
+            disabled={isLoading || upgrading}
+            isLoading={isLoading || upgrading}
             style={styles.upgradeButton}
             leftIcon={<Crown size={18} color={COLORS.white} />}
             testID="upgrade-to-premium-button"

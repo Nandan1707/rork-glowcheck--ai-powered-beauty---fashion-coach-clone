@@ -12,7 +12,7 @@ import { aiService, CoachingPlan, DailyTask } from '@/lib/ai-service';
 import { useAuth } from '@/hooks/auth-store';
 
 export default function CoachingScreen() {
-  const { isPremium, upgradeToPremium } = useAuth();
+  const { isPremium, startFreeTrial, subscriptionLoading } = useAuth();
   const params = useLocalSearchParams();
   const [currentPlan, setCurrentPlan] = useState<CoachingPlan | null>(null);
   const [loading, setLoading] = useState(false);
@@ -21,7 +21,6 @@ export default function CoachingScreen() {
   const [todaysTasks, setTodaysTasks] = useState<DailyTask[]>([]);
   const [currentDay, setCurrentDay] = useState(1);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
-  const [upgradeLoading, setUpgradeLoading] = useState(false);
 
   const goals = [
     'Improve skin hydration and glow',
@@ -151,18 +150,21 @@ export default function CoachingScreen() {
   };
 
   const handleUpgrade = async () => {
-    setUpgradeLoading(true);
-    try {
-      await upgradeToPremium();
-      setShowPremiumModal(false);
+    const result = await startFreeTrial();
+    
+    if (result.success) {
+      Alert.alert(
+        'Free Trial Started! 🎉',
+        'Welcome to Premium! You now have 7 days of free access to all premium features.',
+        [{ text: 'Get Started', style: 'default' }]
+      );
+      
       // If there was a selected goal, generate the plan after upgrade
       if (selectedGoal) {
         setTimeout(() => generatePlan(), 500);
       }
-    } catch (error) {
-      console.error('Error upgrading to premium:', error);
-    } finally {
-      setUpgradeLoading(false);
+    } else {
+      Alert.alert('Error', result.error || 'Failed to start free trial. Please try again.');
     }
   };
 
@@ -257,7 +259,13 @@ export default function CoachingScreen() {
           visible={showPremiumModal}
           onClose={() => setShowPremiumModal(false)}
           onUpgrade={handleUpgrade}
-          isLoading={upgradeLoading}
+          isLoading={subscriptionLoading}
+          onSuccess={() => {
+            setShowPremiumModal(false);
+            if (selectedGoal) {
+              setTimeout(() => generatePlan(), 500);
+            }
+          }}
         />
       </ScrollView>
     );
