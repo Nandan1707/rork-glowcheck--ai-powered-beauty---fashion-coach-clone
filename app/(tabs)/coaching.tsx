@@ -77,6 +77,8 @@ export default function CoachingScreen() {
   const generatePlan = async (goal?: string, glowScore?: number) => {
     const planGoal = goal || selectedGoal;
     console.log('Generating plan with goal:', planGoal);
+    console.log('isPremium:', isPremium);
+    console.log('showPremiumModal:', showPremiumModal);
     
     if (!planGoal) {
       Alert.alert('No Goal Selected', 'Please select a goal before creating your plan.');
@@ -84,6 +86,7 @@ export default function CoachingScreen() {
     }
     
     if (!isPremium) {
+      console.log('User is not premium, showing premium modal');
       setShowPremiumModal(true);
       return;
     }
@@ -246,7 +249,11 @@ export default function CoachingScreen() {
 
           <Button
             title={loading ? 'Generating Plan...' : 'Create My Plan'}
-            onPress={() => generatePlan()}
+            onPress={() => {
+              console.log('Create My Plan button pressed');
+              console.log('selectedGoal:', selectedGoal);
+              generatePlan();
+            }}
             disabled={!selectedGoal || loading}
             isLoading={loading}
             style={styles.generateButton}
