@@ -65,7 +65,7 @@ class NetworkService {
 
     let lastError: NetworkError;
     let controller: AbortController | null = null;
-    let timeoutId: NodeJS.Timeout | null = null;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
     const cleanup = () => {
       if (timeoutId) {
@@ -88,7 +88,7 @@ class NetworkService {
             logger.debug('Request timeout, aborting', { url, timeout });
             controller.abort();
           }
-        }, timeout);
+        }, timeout) as ReturnType<typeof setTimeout>;
 
         // Merge signals if one was provided in options
         let signal = controller.signal;
@@ -181,7 +181,9 @@ class NetworkService {
   async post<T = any>(url: string, data?: any, config?: RequestConfig): Promise<T> {
     return performanceMonitor.measure(`POST ${url}`, async () => {
       const body = data instanceof FormData ? data : JSON.stringify(data);
-      const headers = data instanceof FormData ? {} : { 'Content-Type': 'application/json' };
+      const headers: Record<string, string> = data instanceof FormData 
+        ? {} 
+        : { 'Content-Type': 'application/json' };
       
       const response = await this.makeRequest(url, {
         method: 'POST',
