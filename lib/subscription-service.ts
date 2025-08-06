@@ -148,9 +148,9 @@ class SubscriptionService {
       const errorMessage = 'Failed to start free trial. Please try again.';
       logger.error('Error starting free trial', { error, planId });
       errorHandler.handleError(error as Error, {
-        context: 'subscription-service',
+        component: 'subscription-service',
         action: 'start_free_trial',
-        planId
+        props: { planId }
       });
       return { success: false, error: errorMessage };
     }
@@ -196,9 +196,9 @@ class SubscriptionService {
       const errorMessage = 'Subscription failed. Please try again.';
       logger.error('Error subscribing to plan', { error, planId });
       errorHandler.handleError(error as Error, {
-        context: 'subscription-service',
+        component: 'subscription-service',
         action: 'subscribe',
-        planId
+        props: { planId }
       });
       return { success: false, error: errorMessage };
     }
@@ -220,7 +220,7 @@ class SubscriptionService {
       const errorMessage = 'Failed to cancel subscription. Please try again.';
       logger.error('Error cancelling subscription', { error });
       errorHandler.handleError(error as Error, {
-        context: 'subscription-service',
+        component: 'subscription-service',
         action: 'cancel_subscription'
       });
       return { success: false, error: errorMessage };
