@@ -10,7 +10,7 @@ import Button from '@/components/Button';
 import Card from '@/components/Card';
 import ProgressBar from '@/components/ProgressBar';
 import PremiumModal from '@/components/PremiumModal';
-import { COLORS } from '@/constants/colors';
+import COLORS from '@/constants/colors';
 import { aiService, GlowAnalysisResult } from '@/lib/ai-service';
 import { useAuth } from '@/hooks/auth-store';
 
