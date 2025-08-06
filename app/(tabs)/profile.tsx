@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
   },
   premiumCard: {
     marginHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: 20,
   },
   premiumContent: {
     flexDirection: 'row',
@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   sectionHeaderAfterPremium: {
-    marginTop: 4,
+    marginTop: 8,
   },
   sectionTitle: {
     fontSize: 18,
