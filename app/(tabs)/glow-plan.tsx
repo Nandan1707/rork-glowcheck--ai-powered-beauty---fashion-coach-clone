@@ -9,7 +9,7 @@ import Button from '@/components/Button';
 import Card from '@/components/Card';
 import ProgressBar from '@/components/ProgressBar';
 import Input from '@/components/Input';
-import COLORS from '@/constants/colors';
+import { COLORS } from '@/constants/colors';
 import { useAuth } from '@/hooks/auth-store';
 import { GlowUpPlan, GlowUpDayTask, GlowUpProgress } from '@/types';
 import { aiService } from '@/lib/ai-service';
@@ -80,8 +80,9 @@ export default function GlowUpPlanScreen() {
             data: { day, planId: plan?.id },
           },
           trigger: {
+            type: 'date',
             date: notificationDate,
-          },
+          } as any,
         });
       }
       
