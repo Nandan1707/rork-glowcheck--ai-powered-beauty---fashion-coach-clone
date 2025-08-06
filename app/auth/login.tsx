@@ -107,6 +107,7 @@ export default function LoginScreen() {
               title="Sign In"
               onPress={handleLogin}
               isLoading={isLoginLoading}
+              disabled={isLoginLoading || !email || !password}
               style={styles.loginButton}
               testID="login-button"
             />

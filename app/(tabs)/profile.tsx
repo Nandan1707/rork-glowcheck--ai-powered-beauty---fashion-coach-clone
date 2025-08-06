@@ -36,7 +36,11 @@ export default function ProfileScreen() {
           <Text style={styles.profileName}>{user?.name || 'Guest User'}</Text>
           <Text style={styles.profileEmail}>{user?.email || 'guest@example.com'}</Text>
           <View style={[styles.subscriptionBadge, isPremium && styles.premiumBadge]}>
-            {isPremium && <Crown size={14} color={COLORS.gold} style={{ marginRight: 4 }} />}
+            {isPremium && (
+              <View style={styles.crownIcon}>
+                <Crown size={14} color={COLORS.gold} />
+              </View>
+            )}
             <Text style={[styles.subscriptionText, isPremium && styles.premiumText]}>
               {isPremium ? 'Premium' : 'Free'} Plan
             </Text>
@@ -75,7 +79,11 @@ export default function ProfileScreen() {
               size="small"
               style={styles.upgradeButton}
               onPress={upgradeToPremium}
-              leftIcon={<Crown size={16} color={COLORS.white} style={{ marginRight: 4 }} />}
+              leftIcon={(
+                <View style={styles.upgradeIcon}>
+                  <Crown size={16} color={COLORS.white} />
+                </View>
+              )}
             />
           </View>
         </Card>
@@ -157,7 +165,11 @@ export default function ProfileScreen() {
         title="Log Out"
         variant="outline"
         onPress={() => logout()}
-        leftIcon={<LogOut size={18} color={COLORS.primary} style={{ marginRight: 8 }} />}
+        leftIcon={(
+          <View style={styles.logoutIcon}>
+            <LogOut size={18} color={COLORS.primary} />
+          </View>
+        )}
         style={styles.logoutButton}
       />
     </ScrollView>
@@ -171,6 +183,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 20,
+    flexGrow: 1,
   },
   headerButton: {
     marginRight: 16,
@@ -304,7 +317,7 @@ const styles = StyleSheet.create({
   sectionHeader: {
     paddingHorizontal: 20,
     marginBottom: 12,
-    marginTop: 4,
+    marginTop: 8,
   },
   sectionTitle: {
     fontSize: 18,
@@ -385,5 +398,14 @@ const styles = StyleSheet.create({
   logoutButton: {
     marginHorizontal: 20,
     marginBottom: 20,
+  },
+  crownIcon: {
+    marginRight: 4,
+  },
+  upgradeIcon: {
+    marginRight: 4,
+  },
+  logoutIcon: {
+    marginRight: 8,
   },
 });
