@@ -82,3 +82,59 @@ export interface Subscription {
   active: boolean;
   renewal_date?: string;
 }
+
+export interface GlowUpPlan {
+  id: string;
+  user_id: string;
+  goal: string;
+  start_date: string;
+  end_date: string;
+  created_at: string;
+  analysis_data?: {
+    overallScore: number;
+    skinPotential: string;
+    skinQuality: string;
+    jawlineScore: number;
+    skinTone: string;
+    skinType: string;
+    brightness: number;
+    hydration: number;
+    symmetryScore: number;
+  };
+  progress: {
+    completed_days: number;
+    total_days: number;
+    completion_percentage: number;
+  };
+}
+
+export interface GlowUpDayTask {
+  id: string;
+  plan_id: string;
+  user_id: string;
+  day: number;
+  date: string;
+  title: string;
+  description: string;
+  type: 'skincare' | 'hydration' | 'sleep' | 'exercise' | 'nutrition' | 'mindfulness';
+  product_suggestion?: string;
+  user_product?: string;
+  completed: boolean;
+  reminder_time?: string;
+  notes?: string;
+}
+
+export interface GlowUpProgress {
+  plan_id: string;
+  user_id: string;
+  current_day: number;
+  completed_tasks: number;
+  total_tasks: number;
+  streak_days: number;
+  last_activity_date: string;
+  weekly_progress: {
+    week: number;
+    completed_days: number;
+    total_days: number;
+  }[];
+}

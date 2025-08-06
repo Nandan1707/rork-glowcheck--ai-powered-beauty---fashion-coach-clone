@@ -81,6 +81,12 @@ export default function TabLayout() {
           href: null, // This hides it from the tab bar
         }}
       />
+      <Tabs.Screen
+        name="glow-plan"
+        options={{
+          href: null, // This hides it from the tab bar
+        }}
+      />
     </Tabs>
   );
 }

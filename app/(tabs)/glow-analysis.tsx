@@ -697,11 +697,11 @@ export default function GlowAnalysisScreen() {
                   return;
                 }
                 router.push({
-                  pathname: '/(tabs)/coaching',
+                  pathname: '/(tabs)/glow-plan',
                   params: { 
-                    autoGenerate: 'true',
                     goal: `Boost glow score from ${analysisResult?.overallScore || analysisResult?.glowScore} to 90+ in 30 days`,
-                    glowScore: (analysisResult?.overallScore || analysisResult?.glowScore || 0).toString()
+                    glowScore: (analysisResult?.overallScore || analysisResult?.glowScore || 0).toString(),
+                    analysisData: JSON.stringify(analysisResult)
                   }
                 });
               }}
@@ -740,11 +740,11 @@ export default function GlowAnalysisScreen() {
               return;
             }
             router.push({
-              pathname: '/(tabs)/coaching',
+              pathname: '/(tabs)/glow-plan',
               params: { 
-                autoGenerate: 'true',
                 goal: goal,
-                glowScore: (analysisResult.overallScore || analysisResult.glowScore).toString()
+                glowScore: (analysisResult.overallScore || analysisResult.glowScore).toString(),
+                analysisData: JSON.stringify(analysisResult)
               }
             });
             setShowRecommendations(false);
