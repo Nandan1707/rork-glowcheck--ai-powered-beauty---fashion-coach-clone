@@ -15,7 +15,7 @@ export default function ProfileScreen() {
   const analysisCount = 12;
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
       <Stack.Screen 
         options={{ 
           title: 'Profile',
@@ -95,7 +95,7 @@ export default function ProfileScreen() {
         </Card>
       )}
 
-      <View style={[styles.sectionHeader, isPremium && styles.sectionHeaderAfterPremium]}>
+      <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Recent Activity</Text>
       </View>
 
@@ -169,6 +169,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  scrollContent: {
+    paddingBottom: 20,
+  },
   headerButton: {
     marginRight: 16,
   },
@@ -222,7 +225,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderRadius: 16,
     marginHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 16,
     padding: 16,
     shadowColor: COLORS.black,
     shadowOffset: { width: 0, height: 2 },
@@ -251,7 +254,7 @@ const styles = StyleSheet.create({
   },
   upgradeCard: {
     marginHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   upgradeContent: {
     flexDirection: 'row',
@@ -276,7 +279,7 @@ const styles = StyleSheet.create({
   },
   premiumCard: {
     marginHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   premiumContent: {
     flexDirection: 'row',
@@ -301,10 +304,7 @@ const styles = StyleSheet.create({
   sectionHeader: {
     paddingHorizontal: 20,
     marginBottom: 12,
-    marginTop: 8,
-  },
-  sectionHeaderAfterPremium: {
-    marginTop: 8,
+    marginTop: 4,
   },
   sectionTitle: {
     fontSize: 18,
@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderRadius: 16,
     marginHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 16,
     padding: 8,
     shadowColor: COLORS.black,
     shadowOffset: { width: 0, height: 2 },
@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderRadius: 16,
     marginHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 16,
     shadowColor: COLORS.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -384,6 +384,6 @@ const styles = StyleSheet.create({
   },
   logoutButton: {
     marginHorizontal: 20,
-    marginBottom: 40,
+    marginBottom: 20,
   },
 });
