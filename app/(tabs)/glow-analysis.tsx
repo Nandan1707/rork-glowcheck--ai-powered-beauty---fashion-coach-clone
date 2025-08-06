@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, ActivityIndicator, Platform, TextInput, Alert } from 'react-native';
 import { CameraView, CameraType } from 'expo-camera';
-import { Camera, RefreshCw, Info, Target, Sparkles, Crown, Eye, EyeOff } from 'lucide-react-native';
+import { Camera, RefreshCw, Info, Target, Sparkles, Crown, User } from 'lucide-react-native';
 import { Stack, router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import * as Haptics from 'expo-haptics';
 
 import Button from '@/components/Button';
 import Card from '@/components/Card';
@@ -24,34 +25,28 @@ export default function GlowAnalysisScreen() {
   const [cameraReady, setCameraReady] = useState(false);
   const [takingPicture, setTakingPicture] = useState(false);
   const [cameraReadyTimer, setCameraReadyTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
-  const [autoCapture, setAutoCapture] = useState(false);
   const [faceDetected, setFaceDetected] = useState(false);
-  const [captureCountdown, setCaptureCountdown] = useState<number | null>(null);
-  const [autoCaptureTimer, setAutoCaptureTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const [facePosition, setFacePosition] = useState<{x: number, y: number, width: number, height: number} | null>(null);
   const [faceDetectionTimer, setFaceDetectionTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const [lastFaceDetectionTime, setLastFaceDetectionTime] = useState<number>(0);
   
   const cameraRef = useRef<any>(null);
   const faceDetectionIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
 
 
-  const takePicture = async (isAutoCapture = false) => {
-    if (!cameraRef.current || takingPicture || !cameraReady) {
+  const takePicture = async () => {
+    if (!cameraRef.current || takingPicture || !cameraReady || !faceDetected) {
       console.log('Cannot take picture:', { 
         hasCamera: !!cameraRef.current, 
         takingPicture, 
-        cameraReady 
+        cameraReady,
+        faceDetected
       });
       return;
     }
     
-    // For auto capture, only proceed if face is detected
-    if (isAutoCapture && !faceDetected) {
-      console.log('Auto capture attempted but no face detected, skipping...');
-      return;
-    }
-    
-    console.log('Taking picture...', { isAutoCapture, faceDetected });
+    console.log('Taking picture with face detected...');
     setTakingPicture(true);
     
     try {
@@ -71,18 +66,13 @@ export default function GlowAnalysisScreen() {
       setCapturedImage(photo.uri);
       setCameraActive(false);
       setCameraReady(false);
-      setAutoCapture(false);
       setFaceDetected(false);
-      setCaptureCountdown(null);
+      setFacePosition(null);
       
       // Clear all timers
       if (cameraReadyTimer) {
         clearTimeout(cameraReadyTimer);
         setCameraReadyTimer(null);
-      }
-      if (autoCaptureTimer) {
-        clearInterval(autoCaptureTimer);
-        setAutoCaptureTimer(null);
       }
       if (faceDetectionTimer) {
         clearTimeout(faceDetectionTimer);
@@ -185,17 +175,12 @@ export default function GlowAnalysisScreen() {
       setCameraActive(!cameraActive);
       if (!cameraActive) {
         setCameraReady(false);
-        setAutoCapture(false);
         setFaceDetected(false);
-        setCaptureCountdown(null);
+        setFacePosition(null);
         
         // Clear any existing timers
         if (cameraReadyTimer) {
           clearTimeout(cameraReadyTimer);
-        }
-        if (autoCaptureTimer) {
-          clearTimeout(autoCaptureTimer);
-          setAutoCaptureTimer(null);
         }
         if (faceDetectionTimer) {
           clearTimeout(faceDetectionTimer);
@@ -218,10 +203,6 @@ export default function GlowAnalysisScreen() {
           clearTimeout(cameraReadyTimer);
           setCameraReadyTimer(null);
         }
-        if (autoCaptureTimer) {
-          clearTimeout(autoCaptureTimer);
-          setAutoCaptureTimer(null);
-        }
         if (faceDetectionTimer) {
           clearTimeout(faceDetectionTimer);
           setFaceDetectionTimer(null);
@@ -238,90 +219,77 @@ export default function GlowAnalysisScreen() {
     setFacing(current => (current === 'back' ? 'front' : 'back'));
     // Reset face detection when switching cameras
     setFaceDetected(false);
-    setCaptureCountdown(null);
-    if (autoCaptureTimer) {
-      clearTimeout(autoCaptureTimer);
-      setAutoCaptureTimer(null);
-    }
+    setFacePosition(null);
   };
 
-  const toggleAutoCapture = () => {
-    const newAutoCapture = !autoCapture;
-    console.log('Toggling auto capture:', newAutoCapture);
-    
-    setAutoCapture(newAutoCapture);
-    setFaceDetected(false);
-    setCaptureCountdown(null);
-    
-    // Clear all existing timers
-    if (autoCaptureTimer) {
-      clearInterval(autoCaptureTimer);
-      setAutoCaptureTimer(null);
-    }
-    if (faceDetectionTimer) {
-      clearTimeout(faceDetectionTimer);
-      setFaceDetectionTimer(null);
-    }
-    if (faceDetectionIntervalRef.current) {
-      clearInterval(faceDetectionIntervalRef.current);
-      faceDetectionIntervalRef.current = null;
-    }
-    
-    if (newAutoCapture) {
-      console.log('Auto capture enabled - will start detecting faces when camera is ready');
-    } else {
-      console.log('Auto capture disabled - manual capture mode');
-    }
-  };
 
-  // Enhanced face detection simulation with more realistic behavior
+
+  // Enhanced face detection simulation with realistic behavior and positioning
   const simulateFaceDetection = useCallback(() => {
-    if (!cameraReady || !autoCapture || takingPicture) return;
+    if (!cameraReady || takingPicture) return;
+    
+    const now = Date.now();
     
     // More sophisticated face detection simulation
     // Higher success rate when camera is stable and ready
-    const cameraStabilityFactor = cameraReady ? 0.8 : 0.3;
+    const cameraStabilityFactor = cameraReady ? 0.75 : 0.2;
     const faceDetectionSuccess = Math.random() < cameraStabilityFactor;
     
     if (faceDetectionSuccess && !faceDetected) {
-      console.log('Face detected! Starting auto capture sequence...');
+      console.log('Face detected!');
+      
+      // Simulate face position within the camera guide circle
+      const centerX = 125; // Half of guide circle width (250px)
+      const centerY = 125; // Half of guide circle height (250px)
+      const faceSize = 80 + Math.random() * 40; // Random face size between 80-120px
+      
+      // Add some variation to face position (slightly off-center for realism)
+      const offsetX = (Math.random() - 0.5) * 30;
+      const offsetY = (Math.random() - 0.5) * 30;
+      
+      const facePos = {
+        x: centerX + offsetX - faceSize / 2,
+        y: centerY + offsetY - faceSize / 2,
+        width: faceSize,
+        height: faceSize
+      };
+      
       setFaceDetected(true);
+      setFacePosition(facePos);
+      setLastFaceDetectionTime(now);
       
-      // Start countdown for auto capture only when face is detected
-      let countdown = 3;
-      setCaptureCountdown(countdown);
+      // Haptic feedback when face is detected (mobile only)
+      if (Platform.OS !== 'web') {
+        Haptics.selectionAsync();
+      }
       
-      const countdownInterval = setInterval(() => {
-        countdown -= 1;
-        setCaptureCountdown(countdown);
-        
-        if (countdown <= 0) {
-          clearInterval(countdownInterval);
-          setCaptureCountdown(null);
-          console.log('Auto capture triggered - taking picture now!');
-          takePicture(true);
-        }
-      }, 1000);
-      
-      setAutoCaptureTimer(countdownInterval);
     } else if (!faceDetectionSuccess && faceDetected) {
-      // Face lost during detection, reset and wait for re-detection
-      console.log('Face lost during detection, resetting...');
-      setFaceDetected(false);
-      setCaptureCountdown(null);
-      if (autoCaptureTimer) {
-        clearInterval(autoCaptureTimer);
-        setAutoCaptureTimer(null);
+      // Only lose face detection if it's been a while since last detection
+      if (now - lastFaceDetectionTime > 2000) {
+        console.log('Face lost...');
+        setFaceDetected(false);
+        setFacePosition(null);
+      }
+    } else if (faceDetectionSuccess && faceDetected) {
+      // Update face position slightly for natural movement
+      if (facePosition) {
+        const newPosition = {
+          ...facePosition,
+          x: facePosition.x + (Math.random() - 0.5) * 4,
+          y: facePosition.y + (Math.random() - 0.5) * 4,
+        };
+        setFacePosition(newPosition);
+        setLastFaceDetectionTime(now);
       }
     }
-  }, [cameraReady, autoCapture, takingPicture, faceDetected, autoCaptureTimer]);
+  }, [cameraReady, takingPicture, faceDetected, facePosition, lastFaceDetectionTime]);
 
-  // Start face detection when auto capture is enabled
+  // Start face detection when camera is ready
   useEffect(() => {
-    if (autoCapture && cameraReady && !takingPicture) {
+    if (cameraReady && !takingPicture) {
       console.log('Starting face detection interval...');
       // Check for faces more frequently for better responsiveness
-      faceDetectionIntervalRef.current = setInterval(simulateFaceDetection, 800);
+      faceDetectionIntervalRef.current = setInterval(simulateFaceDetection, 600);
     } else {
       if (faceDetectionIntervalRef.current) {
         console.log('Stopping face detection interval...');
@@ -336,13 +304,12 @@ export default function GlowAnalysisScreen() {
         faceDetectionIntervalRef.current = null;
       }
     };
-  }, [autoCapture, cameraReady, takingPicture, simulateFaceDetection]);
+  }, [cameraReady, takingPicture, simulateFaceDetection]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (cameraReadyTimer) clearTimeout(cameraReadyTimer);
-      if (autoCaptureTimer) clearTimeout(autoCaptureTimer);
       if (faceDetectionTimer) clearTimeout(faceDetectionTimer);
       if (faceDetectionIntervalRef.current) clearInterval(faceDetectionIntervalRef.current);
     };
@@ -370,52 +337,39 @@ export default function GlowAnalysisScreen() {
                 styles.cameraGuideCircle,
                 faceDetected && styles.cameraGuideCircleDetected
               ]} />
-              {faceDetected && (
-                <View style={styles.faceDetectedIndicator}>
-                  <Eye size={24} color={COLORS.success} />
+              
+              {/* Face bounding box */}
+              {faceDetected && facePosition && (
+                <View style={[
+                  styles.faceBoundingBox,
+                  {
+                    left: facePosition.x,
+                    top: facePosition.y,
+                    width: facePosition.width,
+                    height: facePosition.height,
+                  }
+                ]}>
+                  <View style={styles.faceBoundingBoxCorner} />
+                  <View style={[styles.faceBoundingBoxCorner, styles.faceBoundingBoxCornerTopRight]} />
+                  <View style={[styles.faceBoundingBoxCorner, styles.faceBoundingBoxCornerBottomLeft]} />
+                  <View style={[styles.faceBoundingBoxCorner, styles.faceBoundingBoxCornerBottomRight]} />
                 </View>
               )}
-              {captureCountdown !== null && (
-                <View style={styles.countdownContainer}>
-                  <Text style={styles.countdownText}>{captureCountdown}</Text>
+              
+              {faceDetected && (
+                <View style={styles.faceDetectedIndicator}>
+                  <User size={20} color={COLORS.success} />
                 </View>
               )}
             </View>
             <Text style={styles.cameraInstructions}>
               {!cameraReady 
                 ? 'Preparing camera...' 
-                : autoCapture
-                  ? faceDetected
-                    ? captureCountdown !== null
-                      ? `Auto capture in ${captureCountdown}...`
-                      : 'Face detected! Hold still...'
-                    : 'Center your face in the circle for auto capture'
-                  : 'Position your face within the circle and tap to capture'
+                : faceDetected
+                  ? 'Face detected! Tap capture to take photo'
+                  : 'Position your face within the circle'
               }
             </Text>
-            
-            {/* Auto capture toggle */}
-            <TouchableOpacity 
-              style={styles.autoCaptureToggle}
-              onPress={toggleAutoCapture}
-            >
-              <View style={[
-                styles.autoCaptureToggleButton,
-                autoCapture && styles.autoCaptureToggleButtonActive
-              ]}>
-                {autoCapture ? (
-                  <Eye size={20} color={COLORS.white} />
-                ) : (
-                  <EyeOff size={20} color={COLORS.textLight} />
-                )}
-              </View>
-              <Text style={[
-                styles.autoCaptureToggleText,
-                autoCapture && styles.autoCaptureToggleTextActive
-              ]}>
-                Auto Capture
-              </Text>
-            </TouchableOpacity>
           </View>
           <View style={styles.cameraControls}>
             <TouchableOpacity 
@@ -425,12 +379,17 @@ export default function GlowAnalysisScreen() {
               <RefreshCw color={COLORS.white} size={24} />
             </TouchableOpacity>
             <TouchableOpacity 
-              style={[styles.captureButton, (!cameraReady || takingPicture || autoCapture) && styles.captureButtonDisabled]} 
-              onPress={() => takePicture(false)}
-              disabled={!cameraReady || takingPicture || autoCapture}
+              style={[
+                styles.captureButton, 
+                (!cameraReady || takingPicture || !faceDetected) && styles.captureButtonDisabled
+              ]} 
+              onPress={takePicture}
+              disabled={!cameraReady || takingPicture || !faceDetected}
             >
               {takingPicture ? (
                 <ActivityIndicator size="small" color={COLORS.white} />
+              ) : faceDetected ? (
+                <View style={[styles.captureButtonInner, styles.captureButtonInnerActive]} />
               ) : (
                 <View style={styles.captureButtonInner} />
               )}
@@ -711,59 +670,58 @@ const styles = StyleSheet.create({
     borderColor: COLORS.success,
     borderWidth: 3,
   },
+  faceBoundingBox: {
+    position: 'absolute',
+    borderWidth: 2,
+    borderColor: COLORS.success,
+    borderRadius: 8,
+  },
+  faceBoundingBoxCorner: {
+    position: 'absolute',
+    width: 20,
+    height: 20,
+    borderColor: COLORS.success,
+    borderWidth: 3,
+    top: -2,
+    left: -2,
+    borderRightWidth: 0,
+    borderBottomWidth: 0,
+  },
+  faceBoundingBoxCornerTopRight: {
+    top: -2,
+    right: -2,
+    left: 'auto' as any,
+    borderLeftWidth: 0,
+    borderRightWidth: 3,
+    borderBottomWidth: 0,
+  },
+  faceBoundingBoxCornerBottomLeft: {
+    bottom: -2,
+    left: -2,
+    top: 'auto' as any,
+    borderRightWidth: 0,
+    borderTopWidth: 0,
+    borderBottomWidth: 3,
+  },
+  faceBoundingBoxCornerBottomRight: {
+    bottom: -2,
+    right: -2,
+    top: 'auto' as any,
+    left: 'auto' as any,
+    borderLeftWidth: 0,
+    borderTopWidth: 0,
+    borderRightWidth: 3,
+    borderBottomWidth: 3,
+  },
   faceDetectedIndicator: {
     position: 'absolute',
     top: -15,
     right: -15,
     backgroundColor: COLORS.success,
-    borderRadius: 20,
-    padding: 8,
+    borderRadius: 15,
+    padding: 6,
     borderWidth: 2,
     borderColor: COLORS.white,
-  },
-  countdownContainer: {
-    position: 'absolute',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    borderRadius: 40,
-    width: 80,
-    height: 80,
-  },
-  countdownText: {
-    color: COLORS.white,
-    fontSize: 32,
-    fontWeight: 'bold',
-  },
-  autoCaptureToggle: {
-    position: 'absolute',
-    top: 60,
-    right: 20,
-    alignItems: 'center',
-  },
-  autoCaptureToggleButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  autoCaptureToggleButtonActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  autoCaptureToggleText: {
-    color: COLORS.textLight,
-    fontSize: 12,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  autoCaptureToggleTextActive: {
-    color: COLORS.white,
   },
   cameraInstructions: {
     color: COLORS.white,
@@ -794,9 +752,14 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 30,
     backgroundColor: COLORS.white,
+    opacity: 0.5,
+  },
+  captureButtonInnerActive: {
+    opacity: 1,
+    backgroundColor: COLORS.success,
   },
   captureButtonDisabled: {
-    opacity: 0.5,
+    opacity: 0.3,
   },
   cancelText: {
     color: COLORS.white,
