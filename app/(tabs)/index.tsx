@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Shirt, Target, ChevronRight } from 'lucide-react-native';
 
@@ -24,9 +25,10 @@ export default function HomeScreen() {
   ];
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header */}
-      <View style={styles.header}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Text style={styles.greeting}>Hi, {user?.name || 'Olivia'}!</Text>
           <Text style={styles.subtitle}>Let&apos;s get glowing.</Text>
@@ -93,11 +95,16 @@ export default function HomeScreen() {
           ))}
         </View>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F5F2F7',
+  },
   container: {
     flex: 1,
     backgroundColor: '#F5F2F7',
@@ -107,7 +114,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 24,
-    paddingTop: 20,
+    paddingTop: Platform.OS === 'ios' ? 16 : 20,
     paddingBottom: 24,
   },
   headerLeft: {

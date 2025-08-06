@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, ActivityIndicator, Platform, TextInput, Alert } from 'react-native';
 import { CameraView, CameraType } from 'expo-camera';
-import { Camera, RefreshCw, Info, Target, Sparkles, Crown, User } from 'lucide-react-native';
+import { Camera, RefreshCw, Info, Target, Sparkles, Crown } from 'lucide-react-native';
 import { Stack, router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
@@ -335,41 +335,14 @@ export default function GlowAnalysisScreen() {
         >
           <View style={styles.cameraOverlay}>
             <View style={styles.cameraGuide}>
-              <View style={[
-                styles.cameraGuideCircle,
-                faceDetected && styles.cameraGuideCircleDetected
-              ]} />
-              
-              {/* Face bounding box */}
-              {faceDetected && facePosition && (
-                <View style={[
-                  styles.faceBoundingBox,
-                  {
-                    left: facePosition.x,
-                    top: facePosition.y,
-                    width: facePosition.width,
-                    height: facePosition.height,
-                  }
-                ]}>
-                  <View style={styles.faceBoundingBoxCorner} />
-                  <View style={[styles.faceBoundingBoxCorner, styles.faceBoundingBoxCornerTopRight]} />
-                  <View style={[styles.faceBoundingBoxCorner, styles.faceBoundingBoxCornerBottomLeft]} />
-                  <View style={[styles.faceBoundingBoxCorner, styles.faceBoundingBoxCornerBottomRight]} />
-                </View>
-              )}
-              
-              {faceDetected && (
-                <View style={styles.faceDetectedIndicator}>
-                  <User size={20} color={COLORS.success} />
-                </View>
-              )}
+              <View style={styles.cameraGuideCircle} />
             </View>
             <Text style={styles.cameraInstructions}>
               {!cameraReady 
                 ? 'Preparing camera...' 
                 : faceDetected
-                  ? 'Face detected! Tap capture to take photo'
-                  : 'Position your face within the circle'
+                  ? 'Face detected! Tap to take photo.'
+                  : 'No face detected. Please align your face.'
               }
             </Text>
           </View>
@@ -380,22 +353,24 @@ export default function GlowAnalysisScreen() {
             >
               <RefreshCw color={COLORS.white} size={24} />
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={[
-                styles.captureButton, 
-                (!cameraReady || takingPicture || !faceDetected) && styles.captureButtonDisabled
-              ]} 
-              onPress={takePicture}
-              disabled={!cameraReady || takingPicture || !faceDetected}
-            >
-              {takingPicture ? (
-                <ActivityIndicator size="small" color={COLORS.white} />
-              ) : faceDetected ? (
-                <View style={[styles.captureButtonInner, styles.captureButtonInnerActive]} />
-              ) : (
-                <View style={styles.captureButtonInner} />
-              )}
-            </TouchableOpacity>
+            {faceDetected ? (
+              <TouchableOpacity 
+                style={[
+                  styles.captureButton, 
+                  takingPicture && styles.captureButtonDisabled
+                ]} 
+                onPress={takePicture}
+                disabled={takingPicture}
+              >
+                {takingPicture ? (
+                  <ActivityIndicator size="small" color={COLORS.white} />
+                ) : (
+                  <View style={[styles.captureButtonInner, styles.captureButtonInnerActive]} />
+                )}
+              </TouchableOpacity>
+            ) : (
+              <View style={[styles.captureButton, styles.captureButtonHidden]} />
+            )}
             <TouchableOpacity 
               style={styles.cameraButton} 
               onPress={() => setCameraActive(false)}
@@ -669,63 +644,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  cameraGuideCircleDetected: {
-    borderColor: COLORS.success,
-    borderWidth: 3,
-  },
-  faceBoundingBox: {
-    position: 'absolute',
-    borderWidth: 2,
-    borderColor: COLORS.success,
-    borderRadius: 8,
-  },
-  faceBoundingBoxCorner: {
-    position: 'absolute',
-    width: 20,
-    height: 20,
-    borderColor: COLORS.success,
-    borderWidth: 3,
-    top: -2,
-    left: -2,
-    borderRightWidth: 0,
-    borderBottomWidth: 0,
-  },
-  faceBoundingBoxCornerTopRight: {
-    top: -2,
-    right: -2,
-    left: 'auto' as any,
-    borderLeftWidth: 0,
-    borderRightWidth: 3,
-    borderBottomWidth: 0,
-  },
-  faceBoundingBoxCornerBottomLeft: {
-    bottom: -2,
-    left: -2,
-    top: 'auto' as any,
-    borderRightWidth: 0,
-    borderTopWidth: 0,
-    borderBottomWidth: 3,
-  },
-  faceBoundingBoxCornerBottomRight: {
-    bottom: -2,
-    right: -2,
-    top: 'auto' as any,
-    left: 'auto' as any,
-    borderLeftWidth: 0,
-    borderTopWidth: 0,
-    borderRightWidth: 3,
-    borderBottomWidth: 3,
-  },
-  faceDetectedIndicator: {
-    position: 'absolute',
-    top: -15,
-    right: -15,
-    backgroundColor: COLORS.success,
-    borderRadius: 15,
-    padding: 6,
-    borderWidth: 2,
-    borderColor: COLORS.white,
-  },
+
   cameraInstructions: {
     color: COLORS.white,
     fontSize: 16,
@@ -763,6 +682,9 @@ const styles = StyleSheet.create({
   },
   captureButtonDisabled: {
     opacity: 0.3,
+  },
+  captureButtonHidden: {
+    opacity: 0,
   },
   cancelText: {
     color: COLORS.white,
