@@ -72,6 +72,7 @@ export default function OnboardingScreen() {
   };
 
   const nextSlide = () => {
+    console.log('Next button pressed, currentIndex:', currentIndex);
     if (currentIndex < slides.length - 1) {
       scrollTo(currentIndex + 1);
     } else {
@@ -80,6 +81,7 @@ export default function OnboardingScreen() {
   };
 
   const skipToLogin = () => {
+    console.log('Skip button pressed');
     router.replace('/auth/login');
   };
 
@@ -89,7 +91,7 @@ export default function OnboardingScreen() {
       style={styles.container}
     >
       <StatusBar style="dark" />
-      <View style={styles.flatListContainer}>
+      <View style={styles.flatListContainer} pointerEvents="box-none">
         <FlatList
           data={slides}
           renderItem={({ item }) => <OnboardingSlideComponent item={item} width={width} />}
@@ -143,7 +145,7 @@ export default function OnboardingScreen() {
         })}
       </View>
 
-      <View style={styles.footer}>
+      <View style={styles.footer} pointerEvents="box-none">
         {currentIndex === slides.length - 1 ? (
           <View style={styles.finalButtonContainer}>
             <Button
@@ -166,7 +168,7 @@ export default function OnboardingScreen() {
             </Text>
           </View>
         ) : (
-          <View style={styles.buttonContainer}>
+          <View style={styles.buttonContainer} pointerEvents="box-none">
             <Button
               title="Skip"
               variant="text"
@@ -256,19 +258,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     paddingBottom: 50,
     paddingTop: 20,
+    backgroundColor: 'transparent',
+    zIndex: 10,
   },
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    zIndex: 10,
   },
   skipButton: {
     flex: 1,
     marginRight: 12,
+    minHeight: 48,
   },
   nextButton: {
     flex: 2,
     marginLeft: 12,
+    minHeight: 48,
   },
   finalButtonContainer: {
     gap: 16,
