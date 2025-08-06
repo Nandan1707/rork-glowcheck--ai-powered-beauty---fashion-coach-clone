@@ -95,7 +95,7 @@ export default function ProfileScreen() {
         </Card>
       )}
 
-      <View style={styles.sectionHeader}>
+      <View style={[styles.sectionHeader, isPremium && styles.sectionHeaderAfterPremium]}>
         <Text style={styles.sectionTitle}>Recent Activity</Text>
       </View>
 
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
   },
   premiumCard: {
     marginHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   premiumContent: {
     flexDirection: 'row',
@@ -301,6 +301,10 @@ const styles = StyleSheet.create({
   sectionHeader: {
     paddingHorizontal: 20,
     marginBottom: 12,
+    marginTop: 8,
+  },
+  sectionHeaderAfterPremium: {
+    marginTop: 4,
   },
   sectionTitle: {
     fontSize: 18,
