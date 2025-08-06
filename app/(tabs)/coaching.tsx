@@ -6,12 +6,13 @@ import { Target, CheckCircle, Circle, Calendar, Trophy, Sparkles, Crown } from '
 import Button from '@/components/Button';
 import Card from '@/components/Card';
 import ProgressBar from '@/components/ProgressBar';
+import PremiumModal from '@/components/PremiumModal';
 import { COLORS } from '@/constants/colors';
 import { aiService, CoachingPlan, DailyTask } from '@/lib/ai-service';
 import { useAuth } from '@/hooks/auth-store';
 
 export default function CoachingScreen() {
-  const { checkPremiumAccess, isPremium } = useAuth();
+  const { isPremium, upgradeToPremium } = useAuth();
   const params = useLocalSearchParams();
   const [currentPlan, setCurrentPlan] = useState<CoachingPlan | null>(null);
   const [loading, setLoading] = useState(false);
@@ -19,6 +20,8 @@ export default function CoachingScreen() {
   const [showGoalSelection, setShowGoalSelection] = useState(true);
   const [todaysTasks, setTodaysTasks] = useState<DailyTask[]>([]);
   const [currentDay, setCurrentDay] = useState(1);
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
 
   const goals = [
     'Improve skin hydration and glow',
@@ -32,7 +35,8 @@ export default function CoachingScreen() {
   // Handle auto-generation from glow analysis
   useEffect(() => {
     if (params.autoGenerate === 'true' && params.goal && params.glowScore) {
-      if (!checkPremiumAccess('Personalized Coaching Plans')) {
+      if (!isPremium) {
+        setShowPremiumModal(true);
         return;
       }
       
@@ -56,7 +60,7 @@ export default function CoachingScreen() {
       
       autoGeneratePlan();
     }
-  }, [params, checkPremiumAccess]);
+  }, [params, isPremium]);
 
   useEffect(() => {
     if (currentPlan) {
@@ -80,7 +84,8 @@ export default function CoachingScreen() {
       return;
     }
     
-    if (!checkPremiumAccess('Personalized Coaching Plans')) {
+    if (!isPremium) {
+      setShowPremiumModal(true);
       return;
     }
     
@@ -143,6 +148,22 @@ export default function CoachingScreen() {
     setShowGoalSelection(true);
     setSelectedGoal('');
     setTodaysTasks([]);
+  };
+
+  const handleUpgrade = async () => {
+    setUpgradeLoading(true);
+    try {
+      await upgradeToPremium();
+      setShowPremiumModal(false);
+      // If there was a selected goal, generate the plan after upgrade
+      if (selectedGoal) {
+        setTimeout(() => generatePlan(), 500);
+      }
+    } catch (error) {
+      console.error('Error upgrading to premium:', error);
+    } finally {
+      setUpgradeLoading(false);
+    }
   };
 
   const renderTask = ({ item }: { item: DailyTask }) => (
@@ -231,6 +252,13 @@ export default function CoachingScreen() {
             testID="create-my-plan-button"
           />
         </View>
+
+        <PremiumModal
+          visible={showPremiumModal}
+          onClose={() => setShowPremiumModal(false)}
+          onUpgrade={handleUpgrade}
+          isLoading={upgradeLoading}
+        />
       </ScrollView>
     );
   }
