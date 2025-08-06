@@ -91,7 +91,7 @@ export default function OnboardingScreen() {
       style={styles.container}
     >
       <StatusBar style="dark" />
-      <View style={styles.flatListContainer} pointerEvents="box-none">
+      <View style={styles.flatListContainer}>
         <FlatList
           data={slides}
           renderItem={({ item }) => <OnboardingSlideComponent item={item} width={width} />}
@@ -145,7 +145,7 @@ export default function OnboardingScreen() {
         })}
       </View>
 
-      <View style={styles.footer} pointerEvents="box-none">
+      <View style={styles.footer}>
         {currentIndex === slides.length - 1 ? (
           <View style={styles.finalButtonContainer}>
             <Button
@@ -168,7 +168,7 @@ export default function OnboardingScreen() {
             </Text>
           </View>
         ) : (
-          <View style={styles.buttonContainer} pointerEvents="box-none">
+          <View style={styles.buttonContainer}>
             <Button
               title="Skip"
               variant="text"
