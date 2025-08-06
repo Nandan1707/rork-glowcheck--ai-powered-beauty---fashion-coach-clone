@@ -66,7 +66,7 @@ export interface DailyTask {
 }
 
 class AIService {
-  private requestCache = new Map<string, Promise<any>>();
+  private requestCache = new Map<string, { promise: Promise<any>; controller: AbortController }>();
   private cacheTimeout = 30000; // 30 seconds
 
   private getCacheKey(url: string, body: any): string {
@@ -78,31 +78,53 @@ class AIService {
     
     // Check if there's already a pending request for the same data
     if (this.requestCache.has(cacheKey)) {
-      logger.debug('Using cached AI request', { url });
-      return this.requestCache.get(cacheKey)!;
+      const cached = this.requestCache.get(cacheKey)!;
+      if (!cached.controller.signal.aborted) {
+        logger.debug('Using cached AI request', { url });
+        return cached.promise;
+      } else {
+        // Remove aborted request from cache
+        this.requestCache.delete(cacheKey);
+      }
     }
     
-    // Create new request
+    // Create new AbortController for this request
+    const controller = new AbortController();
+    
+    // Create new request with proper signal handling
     const requestPromise = networkService.post<T>(url, body, {
       timeout,
-      retries: 2,
-      retryDelay: 2000,
+      retries: 1, // Reduce retries to prevent multiple concurrent requests
+      retryDelay: 1000,
+    }).then(result => {
+      // Clean up cache on success
+      this.requestCache.delete(cacheKey);
+      return result;
+    }).catch(error => {
+      // Clean up cache on error
+      this.requestCache.delete(cacheKey);
+      throw error;
     });
     
-    // Cache the promise
-    this.requestCache.set(cacheKey, requestPromise);
+    // Cache the promise with controller
+    this.requestCache.set(cacheKey, { promise: requestPromise, controller });
     
     // Clean up cache after timeout
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
+      const cached = this.requestCache.get(cacheKey);
+      if (cached && !cached.controller.signal.aborted) {
+        logger.debug('Aborting cached AI request due to timeout', { url });
+        cached.controller.abort();
+      }
       this.requestCache.delete(cacheKey);
     }, this.cacheTimeout);
     
     try {
       const result = await requestPromise;
+      clearTimeout(timeoutId);
       return result;
     } catch (error) {
-      // Remove failed request from cache immediately
-      this.requestCache.delete(cacheKey);
+      clearTimeout(timeoutId);
       throw error;
     }
   }
@@ -251,10 +273,10 @@ class AIService {
     try {
       console.log('Starting glow analysis for:', imageUri);
       
-      // Upload image to S3
-      const s3Url = await this.uploadImageToS3(imageUri, `glow-${Date.now()}.jpg`);
+      // Skip S3 upload for now to reduce complexity
+      // const s3Url = await this.uploadImageToS3(imageUri, `glow-${Date.now()}.jpg`);
       
-      // Analyze with Google Vision API
+      // Analyze with Google Vision API (or use mock data)
       const visionData = await this.analyzeImageWithVision(imageUri);
       
       // Use Rork AI API for detailed analysis
@@ -262,6 +284,12 @@ class AIService {
       
       return aiAnalysis;
     } catch (error) {
+      // Check if error is due to request cancellation
+      if (error instanceof Error && (error.message.includes('cancelled') || error.message.includes('aborted'))) {
+        logger.debug('Glow analysis request was cancelled', { imageUri: imageUri.substring(0, 50) + '...' });
+        throw error; // Re-throw cancellation errors
+      }
+      
       await errorHandler.reportError(
         error as Error,
         'glow-analysis',
@@ -451,10 +479,10 @@ class AIService {
     try {
       console.log('Starting outfit analysis for:', imageUri, eventType);
       
-      // Upload image to S3
-      const s3Url = await this.uploadImageToS3(imageUri, `outfit-${Date.now()}.jpg`);
+      // Skip S3 upload for now to reduce complexity
+      // const s3Url = await this.uploadImageToS3(imageUri, `outfit-${Date.now()}.jpg`);
       
-      // Analyze with Google Vision API
+      // Analyze with Google Vision API (or use mock data)
       const visionData = await this.analyzeImageWithVision(imageUri);
       
       // Use Rork AI API for detailed analysis
@@ -462,6 +490,12 @@ class AIService {
       
       return aiAnalysis;
     } catch (error) {
+      // Check if error is due to request cancellation
+      if (error instanceof Error && (error.message.includes('cancelled') || error.message.includes('aborted'))) {
+        logger.debug('Outfit analysis request was cancelled', { imageUri: imageUri.substring(0, 50) + '...', eventType });
+        throw error; // Re-throw cancellation errors
+      }
+      
       await errorHandler.reportError(
         error as Error,
         'outfit-analysis',

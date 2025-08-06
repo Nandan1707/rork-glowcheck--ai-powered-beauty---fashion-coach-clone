@@ -88,17 +88,26 @@ class NetworkService {
             logger.debug('Request timeout, aborting', { url, timeout });
             controller.abort();
           }
-        }, timeout) as ReturnType<typeof setTimeout>;
+        }, timeout);
 
         // Merge signals if one was provided in options
         let signal = controller.signal;
-        if (options.signal) {
+        if (options.signal && !options.signal.aborted) {
           // Create a combined signal that aborts when either signal aborts
           const combinedController = new AbortController();
-          const abortHandler = () => combinedController.abort();
+          const abortHandler = () => {
+            if (!combinedController.signal.aborted) {
+              combinedController.abort();
+            }
+          };
           
-          controller.signal.addEventListener('abort', abortHandler);
-          options.signal.addEventListener('abort', abortHandler);
+          // Listen for aborts on both signals
+          if (!controller.signal.aborted) {
+            controller.signal.addEventListener('abort', abortHandler, { once: true });
+          }
+          if (!options.signal.aborted) {
+            options.signal.addEventListener('abort', abortHandler, { once: true });
+          }
           
           signal = combinedController.signal;
         }
@@ -132,18 +141,32 @@ class NetworkService {
         
         // Handle AbortError more gracefully
         if (error instanceof Error && error.name === 'AbortError') {
-          // Check if this was a timeout or external abort
-          const isTimeout = timeoutId !== null;
-          const errorCode = isTimeout ? 'TIMEOUT' : 'ABORTED';
-          const errorMessage = isTimeout 
-            ? `Request timeout after ${timeout}ms` 
-            : 'Request was cancelled';
+          // Check if this was our timeout or an external abort
+          const wasOurTimeout = controller && controller.signal.aborted && timeoutId !== null;
+          const wasExternalAbort = options.signal && options.signal.aborted;
+          
+          let errorCode: string;
+          let errorMessage: string;
+          let shouldRetry = false;
+          
+          if (wasOurTimeout) {
+            errorCode = 'TIMEOUT';
+            errorMessage = `Request timeout after ${timeout}ms`;
+            shouldRetry = attempt < retries;
+          } else if (wasExternalAbort) {
+            errorCode = 'ABORTED';
+            errorMessage = 'Request was cancelled by user';
+            shouldRetry = false;
+          } else {
+            errorCode = 'ABORTED';
+            errorMessage = 'Request was cancelled';
+            shouldRetry = false;
+          }
           
           const networkError = this.createError(errorMessage, undefined, errorCode);
           
-          // Only retry timeouts, not external aborts
-          if (!isTimeout || attempt === retries) {
-            logger.error('Network request aborted', { url, isTimeout, attempt });
+          if (!shouldRetry) {
+            logger.debug('Network request aborted', { url, errorCode, attempt });
             throw networkError;
           }
           
@@ -182,7 +205,7 @@ class NetworkService {
     return performanceMonitor.measure(`POST ${url}`, async () => {
       const body = data instanceof FormData ? data : JSON.stringify(data);
       const headers: Record<string, string> = data instanceof FormData 
-        ? {} 
+        ? {}
         : { 'Content-Type': 'application/json' };
       
       const response = await this.makeRequest(url, {
@@ -190,7 +213,7 @@ class NetworkService {
         body,
       }, {
         ...config,
-        headers: { ...headers, ...config?.headers },
+        headers: { ...headers, ...(config?.headers || {}) },
       });
       
       return response.json();

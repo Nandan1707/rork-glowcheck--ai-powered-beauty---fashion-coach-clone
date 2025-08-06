@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, ActivityIndicator, Platform, TextInput, Alert, Animated } from 'react-native';
-import { CameraView, CameraType } from 'expo-camera';
+import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { Camera, RefreshCw, Target, Sparkles, Crown } from 'lucide-react-native';
 import { Stack, router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -764,23 +764,7 @@ export default function GlowAnalysisScreen() {
   );
 }
 
-// Custom hook for camera permissions
-function useCameraPermissions() {
-  const [permission, requestPermission] = React.useState<{granted: boolean} | null>(null);
 
-  React.useEffect(() => {
-    (async () => {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      requestPermission({ granted: status === 'granted' });
-    })();
-  }, []);
-
-  return [permission, async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    requestPermission({ granted: status === 'granted' });
-    return { granted: status === 'granted' };
-  }] as const;
-}
 
 const styles = StyleSheet.create({
   container: {
