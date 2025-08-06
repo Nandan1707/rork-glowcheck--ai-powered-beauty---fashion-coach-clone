@@ -9,11 +9,14 @@ const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl ||
   
 const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey || 
   process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpbXRxYXFnc2lkeXR5dnFmeHl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIzMjcxMDEsImV4cCI6MjA2NzkwMzEwMX0.Gc5IlgEzndGmWjl8C3F8CZYYB52qrUmaqGnMSmWZpKk';
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpbXRxYXFnZGRpeXR5cWZ5eXpqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzM0MjU0NzQsImV4cCI6MjA0OTAwMTQ3NH0.Gc5IlgEzndGmWjl8C3F8CZYYB52qrUmaqGnMSmWZpKk';
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Missing Supabase configuration. Using fallback values for development.');
 }
+
+console.log('Supabase URL:', supabaseUrl);
+console.log('Supabase Key exists:', !!supabaseAnonKey);
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
@@ -21,6 +24,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
+  },
+  global: {
+    headers: {
+      'Content-Type': 'application/json',
+    },
   },
 });
 
