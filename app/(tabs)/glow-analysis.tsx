@@ -319,7 +319,7 @@ export default function GlowAnalysisScreen() {
         Animated.timing(borderAnimation, {
           toValue: 1,
           duration: 300,
-          useNativeDriver: false,
+          useNativeDriver: true,
         }),
       ]).start();
       
@@ -364,7 +364,7 @@ export default function GlowAnalysisScreen() {
             Animated.timing(borderAnimation, {
               toValue: 0,
               duration: 200,
-              useNativeDriver: false,
+              useNativeDriver: true,
             }),
           ]).start();
           
@@ -447,17 +447,14 @@ export default function GlowAnalysisScreen() {
             <Animated.View style={[
               styles.cameraGuide,
               {
-                borderColor: borderAnimation.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [COLORS.white, COLORS.success],
-                }),
                 transform: [{ scale: pulseAnimation }],
               }
             ]}>
-              <View style={[
+              <Animated.View style={[
                 styles.cameraGuideCircle,
                 {
                   borderColor: faceDetected ? COLORS.success : COLORS.white,
+                  opacity: borderAnimation,
                 }
               ]} />
               {faceDetected && (
