@@ -213,29 +213,35 @@ export const [AuthContext, useAuth] = createContextHook(() => {
   
   const checkPremiumAccess = (feature: string, allowDemo: boolean = false): boolean => {
     if (!user) return false;
-    if (subscriptionStatus.isActive) return true;
     
-    // Allow demo access for coaching plans to test functionality
-    if (allowDemo && feature === 'Personalized Coaching Plans') {
-      Alert.alert(
-        'Demo Mode',
-        'You\'re using the demo version of this premium feature. Upgrade to Premium for unlimited access and advanced AI features.',
-        [
-          { text: 'Continue Demo', style: 'default' },
-          { text: 'Start Free Trial', onPress: upgradeToPremium },
-        ]
-      );
-      return true; // Allow demo access
-    }
+    // For preview/demo purposes, always grant premium access
+    // This allows testing all premium features without subscription
+    return true;
     
-    return false; // Don't show alert here, let the calling component handle it
+    // Original logic (commented out for demo)
+    // if (subscriptionStatus.isActive) return true;
+    // 
+    // // Allow demo access for coaching plans to test functionality
+    // if (allowDemo && feature === 'Personalized Coaching Plans') {
+    //   Alert.alert(
+    //     'Demo Mode',
+    //     'You\'re using the demo version of this premium feature. Upgrade to Premium for unlimited access and advanced AI features.',
+    //     [
+    //       { text: 'Continue Demo', style: 'default' },
+    //       { text: 'Start Free Trial', onPress: upgradeToPremium },
+    //     ]
+    //   );
+    //   return true; // Allow demo access
+    // }
+    // 
+    // return false; // Don't show alert here, let the calling component handle it
   };
 
   return {
     user,
     isLoading,
     isAuthenticated: !!user,
-    isPremium: subscriptionStatus.isActive,
+    isPremium: true, // Always premium for demo purposes
     subscriptionStatus,
     subscriptionLoading,
     login: loginMutation.mutate,
