@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, ActivityIndicator, Platform, TextInput, Alert, Animated } from 'react-native';
 import { CameraView, CameraType } from 'expo-camera';
-import { Camera, RefreshCw, Info, Target, Sparkles, Crown } from 'lucide-react-native';
+import { Camera, RefreshCw, Target, Sparkles, Crown } from 'lucide-react-native';
 import { Stack, router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
@@ -15,7 +15,7 @@ import { aiService, GlowAnalysisResult } from '@/lib/ai-service';
 import { useAuth } from '@/hooks/auth-store';
 
 export default function GlowAnalysisScreen() {
-  const { checkPremiumAccess, isPremium, startFreeTrial, subscriptionLoading } = useAuth();
+  const { isPremium } = useAuth();
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [permission, requestPermission] = useCameraPermissions();
   const [cameraActive, setCameraActive] = useState(false);
@@ -144,16 +144,19 @@ export default function GlowAnalysisScreen() {
     setAnalyzing(true);
     
     try {
+      console.log('Starting comprehensive face analysis...');
       const result = await aiService.analyzeGlow(imageUri);
+      console.log('Analysis result:', result);
+      
       setAnalysisResult({
         ...result,
-        tips: result.tips || result.improvements || [],
+        tips: result.aiTips || result.tips || result.improvements || [],
       });
       
       // Show recommendations after analysis
       setTimeout(() => {
         setShowRecommendations(true);
-      }, 1000);
+      }, 1500);
     } catch (error) {
       console.error('Error analyzing image:', error);
       // Fallback to mock data if AI service fails
@@ -164,14 +167,19 @@ export default function GlowAnalysisScreen() {
       ];
       
       const mockResult: GlowAnalysisResult = {
-        glowScore: Math.floor(Math.random() * 30) + 70,
+        overallScore: Math.floor(Math.random() * 30) + 70,
+        skinPotential: 'Medium',
+        skinQuality: 'Good',
+        jawlineScore: Math.floor(Math.random() * 25) + 70,
         skinTone: 'Medium',
+        skinType: 'Normal',
         brightness: Math.floor(Math.random() * 30) + 70,
         hydration: Math.floor(Math.random() * 30) + 70,
-        symmetry: Math.floor(Math.random() * 30) + 70,
-        skinType: 'Normal',
+        symmetryScore: Math.floor(Math.random() * 30) + 70,
+        glowScore: Math.floor(Math.random() * 30) + 70, // Backward compatibility
         improvements,
         tips: improvements,
+        aiTips: improvements,
         recommendations: [
           'Morning: Gentle cleanser + Vitamin C serum + Moisturizer + SPF',
           'Evening: Double cleanse + Retinol (2x/week) + Hydrating serum + Night cream',
@@ -179,13 +187,13 @@ export default function GlowAnalysisScreen() {
       };
       setAnalysisResult({
         ...mockResult,
-        tips: mockResult.tips || mockResult.improvements,
+        tips: mockResult.aiTips || mockResult.tips || mockResult.improvements,
       });
       
       // Show recommendations after analysis
       setTimeout(() => {
         setShowRecommendations(true);
-      }, 1000);
+      }, 1500);
     } finally {
       setAnalyzing(false);
     }
@@ -569,7 +577,10 @@ export default function GlowAnalysisScreen() {
           />
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={COLORS.primary} />
-            <Text style={styles.analyzingText}>Analyzing your skin...</Text>
+            <Text style={styles.analyzingText}>Scanning in progress...</Text>
+            <Text style={styles.analyzingSubtext}>
+              AI is analyzing your facial features, skin quality, and symmetry
+            </Text>
           </View>
         </View>
       ) : (
@@ -580,24 +591,37 @@ export default function GlowAnalysisScreen() {
               style={styles.resultImage}
             />
             <View style={styles.scoreContainer}>
-              <Text style={styles.scoreLabel}>Your Glow Score</Text>
+              <Text style={styles.scoreLabel}>Overall Score</Text>
               <View style={styles.scoreCircle}>
-                <Text style={styles.scoreValue}>{analysisResult?.glowScore}</Text>
+                <Text style={styles.scoreValue}>{analysisResult?.overallScore || analysisResult?.glowScore}</Text>
+                <Text style={styles.scoreOutOf}>/100</Text>
               </View>
               <Text style={styles.scoreFeedback}>
-                {analysisResult?.glowScore && analysisResult.glowScore >= 90
-                  ? 'Excellent!'
-                  : analysisResult?.glowScore && analysisResult.glowScore >= 80
-                  ? 'Very Good!'
-                  : analysisResult?.glowScore && analysisResult.glowScore >= 70
-                  ? 'Good!'
-                  : 'Needs Improvement'}
+                {(analysisResult?.overallScore || analysisResult?.glowScore || 0) >= 90
+                  ? 'Excellent! ✨'
+                  : (analysisResult?.overallScore || analysisResult?.glowScore || 0) >= 80
+                  ? 'Very Good! 🌟'
+                  : (analysisResult?.overallScore || analysisResult?.glowScore || 0) >= 70
+                  ? 'Good! 👍'
+                  : 'Room for Growth 💪'}
               </Text>
             </View>
           </View>
 
+          {/* Comprehensive Analysis Cards */}
           <Card style={styles.analysisCard}>
-            <Text style={styles.analysisTitle}>Skin Analysis</Text>
+            <Text style={styles.analysisTitle}>✨ Comprehensive Analysis</Text>
+            
+            <View style={styles.analysisGrid}>
+              <View style={styles.analysisItem}>
+                <Text style={styles.analysisItemLabel}>Skin Potential</Text>
+                <Text style={styles.analysisItemValue}>{analysisResult?.skinPotential || 'Medium'}</Text>
+              </View>
+              <View style={styles.analysisItem}>
+                <Text style={styles.analysisItemLabel}>Skin Quality</Text>
+                <Text style={styles.analysisItemValue}>{analysisResult?.skinQuality || 'Good'}</Text>
+              </View>
+            </View>
             
             <View style={styles.skinToneContainer}>
               <Text style={styles.skinToneLabel}>Skin Tone</Text>
@@ -608,38 +632,53 @@ export default function GlowAnalysisScreen() {
               <Text style={styles.skinToneLabel}>Skin Type</Text>
               <Text style={styles.skinToneValue}>{analysisResult?.skinType || 'Normal'}</Text>
             </View>
+          </Card>
 
+          <Card style={styles.metricsCard}>
+            <Text style={styles.analysisTitle}>📊 Detailed Scores</Text>
+            
             <View style={styles.metricsContainer}>
-              <Text style={styles.metricsLabel}>Brightness</Text>
+              <Text style={styles.metricsLabel}>Jawline Sharpness</Text>
+              <ProgressBar 
+                progress={analysisResult?.jawlineScore || 75} 
+                height={10}
+                showPercentage
+                color={COLORS.primary}
+              />
+              
+              <Text style={styles.metricsLabel}>Brightness & Glow</Text>
               <ProgressBar 
                 progress={analysisResult?.brightness || 0} 
-                height={8}
+                height={10}
                 showPercentage
+                color={COLORS.secondary}
               />
               
-              <Text style={styles.metricsLabel}>Hydration</Text>
+              <Text style={styles.metricsLabel}>Hydration Level</Text>
               <ProgressBar 
                 progress={analysisResult?.hydration || 0} 
-                height={8}
+                height={10}
                 showPercentage
+                color={COLORS.info}
               />
               
-              <Text style={styles.metricsLabel}>Symmetry</Text>
+              <Text style={styles.metricsLabel}>Facial Symmetry</Text>
               <ProgressBar 
-                progress={analysisResult?.symmetry || 0} 
-                height={8}
+                progress={analysisResult?.symmetryScore || analysisResult?.symmetry || 0} 
+                height={10}
                 showPercentage
+                color={COLORS.success}
               />
             </View>
           </Card>
 
           <Card style={styles.tipsCard}>
             <View style={styles.tipsHeader}>
-              <Text style={styles.tipsTitle}>Personalized Tips</Text>
-              <Info size={16} color={COLORS.textLight} />
+              <Text style={styles.tipsTitle}>🤖 Personalized AI Beauty Tips</Text>
+              <Sparkles size={16} color={COLORS.primary} />
             </View>
             
-            {analysisResult?.tips?.map((tip: string, index: number) => (
+            {(analysisResult?.aiTips || analysisResult?.tips || []).map((tip: string, index: number) => (
               <View key={index} style={styles.tipItem}>
                 <View style={styles.tipBullet}>
                   <Text style={styles.tipBulletText}>{index + 1}</Text>
@@ -651,16 +690,42 @@ export default function GlowAnalysisScreen() {
 
           <View style={styles.actionButtons}>
             <Button
-              title="New Analysis"
-              onPress={resetAnalysis}
-              style={styles.actionButton}
+              title="Start 30-Day Glow-Up Plan"
+              onPress={() => {
+                if (!isPremium) {
+                  setShowPremiumModal(true);
+                  return;
+                }
+                router.push({
+                  pathname: '/(tabs)/coaching',
+                  params: { 
+                    autoGenerate: 'true',
+                    goal: `Boost glow score from ${analysisResult?.overallScore || analysisResult?.glowScore} to 90+ in 30 days`,
+                    glowScore: (analysisResult?.overallScore || analysisResult?.glowScore || 0).toString()
+                  }
+                });
+              }}
+              leftIcon={<Sparkles size={18} color={COLORS.white} />}
+              style={styles.primaryActionButton}
+              testID="start-glow-plan-button"
             />
-            <Button
-              title="Save Results"
-              variant="outline"
-              onPress={() => {}}
-              style={styles.actionButton}
-            />
+            <View style={styles.secondaryActions}>
+              <Button
+                title="New Analysis"
+                onPress={resetAnalysis}
+                variant="outline"
+                style={styles.actionButton}
+              />
+              <Button
+                title="Save Results"
+                variant="outline"
+                onPress={() => {
+                  // TODO: Implement save functionality
+                  console.log('Save results:', analysisResult);
+                }}
+                style={styles.actionButton}
+              />
+            </View>
           </View>
         </View>
       )}
@@ -679,13 +744,27 @@ export default function GlowAnalysisScreen() {
               params: { 
                 autoGenerate: 'true',
                 goal: goal,
-                glowScore: analysisResult.glowScore.toString()
+                glowScore: (analysisResult.overallScore || analysisResult.glowScore).toString()
               }
             });
             setShowRecommendations(false);
           }}
         />
       )}
+      
+      <PremiumModal
+        visible={showPremiumModal}
+        onClose={() => setShowPremiumModal(false)}
+        title="Unlock Your Personalized Plan"
+        subtitle="Subscribe to premium to access your full 30-day routine."
+        features={[
+          'Personalized 30-day glow-up plans',
+          'AI-powered beauty coaching',
+          'Daily progress tracking',
+          'Unlimited face analysis',
+          'Premium skincare recommendations'
+        ]}
+      />
     </ScrollView>
   );
 }
@@ -864,6 +943,14 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: COLORS.textDark,
     marginTop: 16,
+    fontWeight: '600',
+  },
+  analyzingSubtext: {
+    fontSize: 14,
+    color: COLORS.textLight,
+    marginTop: 8,
+    textAlign: 'center',
+    paddingHorizontal: 20,
   },
   resultContainer: {
     padding: 20,
@@ -901,12 +988,47 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.white,
   },
+  scoreOutOf: {
+    fontSize: 14,
+    color: COLORS.white,
+    opacity: 0.8,
+  },
   scoreFeedback: {
     fontSize: 16,
     fontWeight: '600',
     color: COLORS.primary,
   },
   analysisCard: {
+    marginBottom: 20,
+    padding: 20,
+  },
+  analysisGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  analysisItem: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    backgroundColor: COLORS.primary + '10',
+    borderRadius: 12,
+    marginHorizontal: 4,
+  },
+  analysisItemLabel: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  analysisItemValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.primary,
+    textAlign: 'center',
+  },
+  metricsCard: {
     marginBottom: 20,
     padding: 20,
   },
@@ -984,9 +1106,15 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   actionButtons: {
+    marginBottom: 30,
+  },
+  primaryActionButton: {
+    width: '100%',
+    marginBottom: 12,
+  },
+  secondaryActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 30,
   },
   actionButton: {
     flex: 1,

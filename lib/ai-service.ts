@@ -18,15 +18,20 @@ if (Platform.OS !== 'web') {
 }
 
 export interface GlowAnalysisResult {
-  glowScore: number;
+  overallScore: number;
+  skinPotential: string;
+  skinQuality: string;
+  jawlineScore: number;
   skinTone: string;
+  skinType: string;
   brightness: number;
   hydration: number;
-  symmetry: number;
+  symmetryScore: number;
+  glowScore: number; // Keep for backward compatibility
   improvements: string[];
-  skinType: string;
   recommendations: string[];
   tips: string[];
+  aiTips: string[];
 }
 
 export interface OutfitAnalysisResult {
@@ -235,7 +240,7 @@ class AIService {
       
       // Create abort controller for timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout for detailed analysis
       
       const response = await fetch(`${CONFIG.AI.RORK_AI_BASE_URL}/text/llm/`, {
         method: 'POST',
@@ -247,14 +252,42 @@ class AIService {
           messages: [
             {
               role: 'system',
-              content: 'You are a professional beauty analyst. Analyze the facial features and skin quality from the provided vision data and return a detailed glow analysis in JSON format.',
+              content: `You are a professional beauty and facial analysis expert. Analyze the facial features and skin quality comprehensively. Return a detailed JSON analysis with these exact fields:
+              {
+                "overallScore": number (1-100),
+                "skinPotential": string ("High", "Medium", "Low"),
+                "skinQuality": string ("Excellent", "Good", "Fair", "Needs Improvement"),
+                "jawlineScore": number (1-100),
+                "skinTone": string (e.g., "Warm Beige", "Cool Ivory", "Deep Caramel"),
+                "skinType": string ("Oily", "Dry", "Combination", "Normal", "Sensitive"),
+                "brightness": number (1-100),
+                "hydration": number (1-100),
+                "symmetryScore": number (1-100),
+                "aiTips": array of 3-5 personalized beauty tips,
+                "improvements": array of specific improvement suggestions,
+                "recommendations": array of product/routine recommendations
+              }`,
             },
             {
               role: 'user',
               content: [
                 {
                   type: 'text',
-                  text: `Analyze this face data and provide a glow score (1-100), skin analysis, and beauty recommendations. Vision data: ${JSON.stringify(visionData)}`,
+                  text: `Perform a comprehensive facial analysis on this image. Analyze:
+                  1. Overall facial beauty score (1-100)
+                  2. Skin potential assessment
+                  3. Skin quality evaluation
+                  4. Jawline definition and sharpness (1-100)
+                  5. Skin tone classification
+                  6. Skin type determination
+                  7. Brightness and glow level (1-100)
+                  8. Hydration level assessment (1-100)
+                  9. Facial symmetry analysis (1-100)
+                  10. Personalized AI beauty tips
+                  
+                  Vision API data: ${JSON.stringify(visionData)}
+                  
+                  Provide detailed, actionable insights and recommendations.`,
                 },
                 {
                   type: 'image',
@@ -290,20 +323,45 @@ class AIService {
       // Try to parse JSON response from AI
       const parsed = JSON.parse(aiResponse);
       
-      // Validate required fields
-      if (typeof parsed.glowScore === 'number' && 
+      // Validate required fields for new comprehensive format
+      if (typeof parsed.overallScore === 'number' && 
           typeof parsed.skinTone === 'string' &&
-          Array.isArray(parsed.improvements)) {
+          Array.isArray(parsed.aiTips)) {
         return {
-          glowScore: parsed.glowScore,
+          overallScore: parsed.overallScore,
+          skinPotential: parsed.skinPotential || 'Medium',
+          skinQuality: parsed.skinQuality || 'Good',
+          jawlineScore: parsed.jawlineScore || 75,
           skinTone: parsed.skinTone,
+          skinType: parsed.skinType || 'Normal',
           brightness: parsed.brightness || 75,
           hydration: parsed.hydration || 70,
-          symmetry: parsed.symmetry || 85,
+          symmetryScore: parsed.symmetryScore || 85,
+          glowScore: parsed.overallScore, // Map for backward compatibility
+          improvements: parsed.improvements || [],
+          recommendations: parsed.recommendations || [],
+          tips: parsed.aiTips, // Use AI tips as primary tips
+          aiTips: parsed.aiTips,
+        };
+      }
+      
+      // Fallback to old format if new format not available
+      if (typeof parsed.glowScore === 'number') {
+        return {
+          overallScore: parsed.glowScore,
+          skinPotential: 'Medium',
+          skinQuality: 'Good',
+          jawlineScore: 75,
+          skinTone: parsed.skinTone || 'Medium',
           skinType: parsed.skinType || 'Normal',
-          improvements: parsed.improvements,
-          recommendations: parsed.recommendations || parsed.improvements,
-          tips: parsed.tips || parsed.improvements,
+          brightness: parsed.brightness || 75,
+          hydration: parsed.hydration || 70,
+          symmetryScore: parsed.symmetry || 85,
+          glowScore: parsed.glowScore,
+          improvements: parsed.improvements || [],
+          recommendations: parsed.recommendations || [],
+          tips: parsed.tips || parsed.improvements || [],
+          aiTips: parsed.tips || parsed.improvements || [],
         };
       }
       
@@ -315,27 +373,49 @@ class AIService {
   }
 
   private getMockGlowAnalysis(): GlowAnalysisResult {
+    const overallScore = Math.floor(Math.random() * 30) + 70; // 70-100
+    const skinTones = ['Warm Beige', 'Cool Ivory', 'Olive Medium', 'Deep Caramel', 'Golden Tan', 'Porcelain Fair'];
+    const skinTypes = ['Normal', 'Dry', 'Oily', 'Combination', 'Sensitive'];
+    const potentials = ['High', 'Medium', 'Low'];
+    const qualities = ['Excellent', 'Good', 'Fair', 'Needs Improvement'];
+    
+    const aiTips = [
+      'Hydrate twice daily with hyaluronic acid serum for plumper skin',
+      'Use sunscreen every morning to prevent premature aging',
+      'Add more Omega-3s to your diet for improved skin elasticity',
+      'Try facial massage for 5 minutes daily to boost circulation',
+      'Get 7-8 hours of quality sleep for optimal skin recovery',
+    ];
+    
     const improvements = [
-      'Increase daily water intake for better hydration',
-      'Use a vitamin C serum for brighter skin',
-      'Apply sunscreen daily to prevent aging',
-      'Get 7-8 hours of sleep for skin recovery',
+      'Increase daily water intake to 8-10 glasses for better hydration',
+      'Incorporate vitamin C serum in morning routine for brighter skin',
+      'Use a gentle exfoliant 2x per week to improve texture',
+      'Apply a hydrating face mask weekly for deep moisture',
+    ];
+    
+    const recommendations = [
+      'Morning: Gentle cleanser → Vitamin C serum → Moisturizer → SPF 30+',
+      'Evening: Double cleanse → Retinol (2x/week) → Hydrating serum → Night cream',
+      'Weekly: Gentle exfoliation + Deep hydrating mask',
+      'Monthly: Professional facial or at-home enzyme treatment',
     ];
     
     return {
-      glowScore: Math.floor(Math.random() * 30) + 70, // 70-100
-      skinTone: ['Fair', 'Medium', 'Olive', 'Deep'][Math.floor(Math.random() * 4)],
-      brightness: Math.floor(Math.random() * 30) + 70,
-      hydration: Math.floor(Math.random() * 40) + 60,
-      symmetry: Math.floor(Math.random() * 20) + 80,
-      skinType: ['Normal', 'Dry', 'Oily', 'Combination'][Math.floor(Math.random() * 4)],
+      overallScore,
+      skinPotential: potentials[Math.floor(Math.random() * potentials.length)],
+      skinQuality: qualities[Math.floor(Math.random() * qualities.length)],
+      jawlineScore: Math.floor(Math.random() * 25) + 70, // 70-95
+      skinTone: skinTones[Math.floor(Math.random() * skinTones.length)],
+      skinType: skinTypes[Math.floor(Math.random() * skinTypes.length)],
+      brightness: Math.floor(Math.random() * 30) + 65, // 65-95
+      hydration: Math.floor(Math.random() * 40) + 55, // 55-95
+      symmetryScore: Math.floor(Math.random() * 20) + 75, // 75-95
+      glowScore: overallScore, // Backward compatibility
       improvements,
-      tips: improvements, // Use improvements as tips for compatibility
-      recommendations: [
-        'Morning: Gentle cleanser + Vitamin C serum + Moisturizer + SPF',
-        'Evening: Double cleanse + Retinol (2x/week) + Hydrating serum + Night cream',
-        'Weekly: Exfoliate 1-2 times + Hydrating face mask',
-      ],
+      recommendations,
+      tips: aiTips.slice(0, 3), // Use first 3 AI tips for compatibility
+      aiTips,
     };
   }
 
