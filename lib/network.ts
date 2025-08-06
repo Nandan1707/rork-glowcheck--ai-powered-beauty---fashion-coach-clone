@@ -38,6 +38,7 @@ class NetworkService {
     if (status >= 500) return true; // Server errors are retryable
     if (status === 408 || status === 429) return true; // Timeout and rate limit
     if (code === 'NETWORK_ERROR' || code === 'TIMEOUT') return true;
+    if (code === 'ABORTED') return false; // Don't retry external aborts
     return false;
   }
 
@@ -63,21 +64,52 @@ class NetworkService {
     };
 
     let lastError: NetworkError;
+    let controller: AbortController | null = null;
+    let timeoutId: NodeJS.Timeout | null = null;
+
+    const cleanup = () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+      controller = null;
+    };
 
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
         logger.debug(`Network request attempt ${attempt + 1}`, { url, method: options.method });
         
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeout);
+        // Create new controller for each attempt
+        controller = new AbortController();
+        
+        // Set timeout with proper cleanup
+        timeoutId = setTimeout(() => {
+          if (controller && !controller.signal.aborted) {
+            logger.debug('Request timeout, aborting', { url, timeout });
+            controller.abort();
+          }
+        }, timeout);
+
+        // Merge signals if one was provided in options
+        let signal = controller.signal;
+        if (options.signal) {
+          // Create a combined signal that aborts when either signal aborts
+          const combinedController = new AbortController();
+          const abortHandler = () => combinedController.abort();
+          
+          controller.signal.addEventListener('abort', abortHandler);
+          options.signal.addEventListener('abort', abortHandler);
+          
+          signal = combinedController.signal;
+        }
 
         const response = await fetch(url, {
           ...options,
           headers: requestHeaders,
-          signal: controller.signal,
+          signal,
         });
 
-        clearTimeout(timeoutId);
+        cleanup();
 
         if (!response.ok) {
           const errorMessage = `HTTP ${response.status}: ${response.statusText}`;
@@ -96,8 +128,33 @@ class NetworkService {
         logger.debug('Network request successful', { url, status: response.status });
         return response;
       } catch (error) {
+        cleanup();
+        
+        // Handle AbortError more gracefully
+        if (error instanceof Error && error.name === 'AbortError') {
+          // Check if this was a timeout or external abort
+          const isTimeout = timeoutId !== null;
+          const errorCode = isTimeout ? 'TIMEOUT' : 'ABORTED';
+          const errorMessage = isTimeout 
+            ? `Request timeout after ${timeout}ms` 
+            : 'Request was cancelled';
+          
+          const networkError = this.createError(errorMessage, undefined, errorCode);
+          
+          // Only retry timeouts, not external aborts
+          if (!isTimeout || attempt === retries) {
+            logger.error('Network request aborted', { url, isTimeout, attempt });
+            throw networkError;
+          }
+          
+          lastError = networkError;
+          logger.warn(`Request timed out, retrying in ${retryDelay}ms`, { attempt });
+          await this.delay(retryDelay * Math.pow(2, attempt));
+          continue;
+        }
+        
         const networkError = error instanceof Error 
-          ? this.createError(error.message, undefined, error.name === 'AbortError' ? 'TIMEOUT' : 'NETWORK_ERROR')
+          ? this.createError(error.message, undefined, 'NETWORK_ERROR')
           : this.createError('Unknown network error');
 
         if (!networkError.isRetryable || attempt === retries) {

@@ -66,6 +66,46 @@ export interface DailyTask {
 }
 
 class AIService {
+  private requestCache = new Map<string, Promise<any>>();
+  private cacheTimeout = 30000; // 30 seconds
+
+  private getCacheKey(url: string, body: any): string {
+    return `${url}:${JSON.stringify(body)}`;
+  }
+
+  private async makeAIRequest<T>(url: string, body: any, timeout: number = 30000): Promise<T> {
+    const cacheKey = this.getCacheKey(url, body);
+    
+    // Check if there's already a pending request for the same data
+    if (this.requestCache.has(cacheKey)) {
+      logger.debug('Using cached AI request', { url });
+      return this.requestCache.get(cacheKey)!;
+    }
+    
+    // Create new request
+    const requestPromise = networkService.post<T>(url, body, {
+      timeout,
+      retries: 2,
+      retryDelay: 2000,
+    });
+    
+    // Cache the promise
+    this.requestCache.set(cacheKey, requestPromise);
+    
+    // Clean up cache after timeout
+    setTimeout(() => {
+      this.requestCache.delete(cacheKey);
+    }, this.cacheTimeout);
+    
+    try {
+      const result = await requestPromise;
+      return result;
+    } catch (error) {
+      // Remove failed request from cache immediately
+      this.requestCache.delete(cacheKey);
+      throw error;
+    }
+  }
   private async uploadImageToS3(imageUri: string, fileName: string): Promise<string> {
     return performanceMonitor.measure('uploadImageToS3', async () => {
       try {
@@ -238,74 +278,62 @@ class AIService {
       // Convert image to base64 for AI API
       const base64Image = await this.convertImageToBase64(imageUri);
       
-      // Create abort controller for timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout for detailed analysis
-      
-      const response = await fetch(`${CONFIG.AI.RORK_AI_BASE_URL}/text/llm/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        signal: controller.signal,
-        body: JSON.stringify({
-          messages: [
+      const requestBody = {
+        messages: [
+          {
+            role: 'system',
+            content: `You are a professional beauty and facial analysis expert. Analyze the facial features and skin quality comprehensively. Return a detailed JSON analysis with these exact fields:
             {
-              role: 'system',
-              content: `You are a professional beauty and facial analysis expert. Analyze the facial features and skin quality comprehensively. Return a detailed JSON analysis with these exact fields:
+              "overallScore": number (1-100),
+              "skinPotential": string ("High", "Medium", "Low"),
+              "skinQuality": string ("Excellent", "Good", "Fair", "Needs Improvement"),
+              "jawlineScore": number (1-100),
+              "skinTone": string (e.g., "Warm Beige", "Cool Ivory", "Deep Caramel"),
+              "skinType": string ("Oily", "Dry", "Combination", "Normal", "Sensitive"),
+              "brightness": number (1-100),
+              "hydration": number (1-100),
+              "symmetryScore": number (1-100),
+              "aiTips": array of 3-5 personalized beauty tips,
+              "improvements": array of specific improvement suggestions,
+              "recommendations": array of product/routine recommendations
+            }`,
+          },
+          {
+            role: 'user',
+            content: [
               {
-                "overallScore": number (1-100),
-                "skinPotential": string ("High", "Medium", "Low"),
-                "skinQuality": string ("Excellent", "Good", "Fair", "Needs Improvement"),
-                "jawlineScore": number (1-100),
-                "skinTone": string (e.g., "Warm Beige", "Cool Ivory", "Deep Caramel"),
-                "skinType": string ("Oily", "Dry", "Combination", "Normal", "Sensitive"),
-                "brightness": number (1-100),
-                "hydration": number (1-100),
-                "symmetryScore": number (1-100),
-                "aiTips": array of 3-5 personalized beauty tips,
-                "improvements": array of specific improvement suggestions,
-                "recommendations": array of product/routine recommendations
-              }`,
-            },
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'text',
-                  text: `Perform a comprehensive facial analysis on this image. Analyze:
-                  1. Overall facial beauty score (1-100)
-                  2. Skin potential assessment
-                  3. Skin quality evaluation
-                  4. Jawline definition and sharpness (1-100)
-                  5. Skin tone classification
-                  6. Skin type determination
-                  7. Brightness and glow level (1-100)
-                  8. Hydration level assessment (1-100)
-                  9. Facial symmetry analysis (1-100)
-                  10. Personalized AI beauty tips
-                  
-                  Vision API data: ${JSON.stringify(visionData)}
-                  
-                  Provide detailed, actionable insights and recommendations.`,
-                },
-                {
-                  type: 'image',
-                  image: base64Image,
-                },
-              ],
-            },
-          ],
-        }),
-      });
+                type: 'text',
+                text: `Perform a comprehensive facial analysis on this image. Analyze:
+                1. Overall facial beauty score (1-100)
+                2. Skin potential assessment
+                3. Skin quality evaluation
+                4. Jawline definition and sharpness (1-100)
+                5. Skin tone classification
+                6. Skin type determination
+                7. Brightness and glow level (1-100)
+                8. Hydration level assessment (1-100)
+                9. Facial symmetry analysis (1-100)
+                10. Personalized AI beauty tips
+                
+                Vision API data: ${JSON.stringify(visionData)}
+                
+                Provide detailed, actionable insights and recommendations.`,
+              },
+              {
+                type: 'image',
+                image: base64Image,
+              },
+            ],
+          },
+        ],
+      };
       
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`AI API error: ${response.statusText}`);
-      }
-
-      const result = await response.json();
+      const result = await this.makeAIRequest<{ completion: string }>(
+        `${CONFIG.AI.RORK_AI_BASE_URL}/text/llm/`,
+        requestBody,
+        45000 // 45 second timeout for detailed analysis
+      );
+      
       return this.parseGlowAnalysis(result.completion);
     } catch (error) {
       await errorHandler.reportNetworkError(
@@ -450,46 +478,34 @@ class AIService {
       // Convert image to base64 for AI API
       const base64Image = await this.convertImageToBase64(imageUri);
       
-      // Create abort controller for timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      const requestBody = {
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a professional fashion stylist. Analyze the outfit and provide detailed fashion advice in JSON format.',
+          },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: `Analyze this outfit for a ${eventType} event. Provide outfit score (1-100), color analysis, style tips, and recommendations. Vision data: ${JSON.stringify(visionData)}`,
+              },
+              {
+                type: 'image',
+                image: base64Image,
+              },
+            ],
+          },
+        ],
+      };
       
-      const response = await fetch(`${CONFIG.AI.RORK_AI_BASE_URL}/text/llm/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        signal: controller.signal,
-        body: JSON.stringify({
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a professional fashion stylist. Analyze the outfit and provide detailed fashion advice in JSON format.',
-            },
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'text',
-                  text: `Analyze this outfit for a ${eventType} event. Provide outfit score (1-100), color analysis, style tips, and recommendations. Vision data: ${JSON.stringify(visionData)}`,
-                },
-                {
-                  type: 'image',
-                  image: base64Image,
-                },
-              ],
-            },
-          ],
-        }),
-      });
+      const result = await this.makeAIRequest<{ completion: string }>(
+        `${CONFIG.AI.RORK_AI_BASE_URL}/text/llm/`,
+        requestBody,
+        30000 // 30 second timeout
+      );
       
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`AI API error: ${response.statusText}`);
-      }
-
-      const result = await response.json();
       return this.parseOutfitAnalysis(result.completion);
     } catch (error) {
       await errorHandler.reportNetworkError(
@@ -552,37 +568,25 @@ class AIService {
 
   async generateCoachingPlan(goal: string, currentGlowScore: number): Promise<CoachingPlan> {
     try {
-      // Create abort controller for timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      const requestBody = {
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a professional beauty coach. Create a personalized 30-day beauty coaching plan in JSON format.',
+          },
+          {
+            role: 'user',
+            content: `Create a 30-day coaching plan for someone with goal: "${goal}" and current glow score: ${currentGlowScore}. Include daily tasks, tips, and expected results.`,
+          },
+        ],
+      };
       
-      const response = await fetch(`${CONFIG.AI.RORK_AI_BASE_URL}/text/llm/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        signal: controller.signal,
-        body: JSON.stringify({
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a professional beauty coach. Create a personalized 30-day beauty coaching plan in JSON format.',
-            },
-            {
-              role: 'user',
-              content: `Create a 30-day coaching plan for someone with goal: "${goal}" and current glow score: ${currentGlowScore}. Include daily tasks, tips, and expected results.`,
-            },
-          ],
-        }),
-      });
+      const result = await this.makeAIRequest<{ completion: string }>(
+        `${CONFIG.AI.RORK_AI_BASE_URL}/text/llm/`,
+        requestBody,
+        30000 // 30 second timeout
+      );
       
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`AI API error: ${response.statusText}`);
-      }
-
-      const result = await response.json();
       return this.parseCoachingPlan(result.completion, goal);
     } catch (error) {
       await errorHandler.reportNetworkError(
@@ -685,22 +689,13 @@ class AIService {
 
   async generateImage(prompt: string, size: string = '1024x1024'): Promise<{ image: { base64Data: string; mimeType: string }; size: string }> {
     try {
-      const response = await fetch(`${CONFIG.AI.RORK_AI_BASE_URL}/images/generate/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          prompt,
-          size,
-        }),
+      return await networkService.post(`${CONFIG.AI.RORK_AI_BASE_URL}/images/generate/`, {
+        prompt,
+        size,
+      }, {
+        timeout: 60000, // 60 seconds for image generation
+        retries: 1,
       });
-
-      if (!response.ok) {
-        throw new Error(`Image generation error: ${response.statusText}`);
-      }
-
-      return await response.json();
     } catch (error) {
       await errorHandler.reportNetworkError(
         error as Error,
@@ -727,16 +722,14 @@ class AIService {
         formData.append('language', language);
       }
 
-      const response = await fetch(`${CONFIG.AI.RORK_AI_BASE_URL}/stt/transcribe/`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error(`Transcription error: ${response.statusText}`);
-      }
-
-      return await response.json();
+      return await networkService.uploadFile(
+        `${CONFIG.AI.RORK_AI_BASE_URL}/stt/transcribe/`,
+        formData,
+        {
+          timeout: 30000,
+          retries: 2,
+        }
+      );
     } catch (error) {
       await errorHandler.reportNetworkError(
         error as Error,

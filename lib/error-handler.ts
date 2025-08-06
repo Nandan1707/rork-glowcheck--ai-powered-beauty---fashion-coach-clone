@@ -122,6 +122,11 @@ class ErrorHandler {
   }
 
   private getSeverity(error: Error, context: ErrorContext): ErrorSeverity {
+    // AbortError from cancelled requests are low severity
+    if (error.name === 'AbortError' || error.message.includes('aborted') || error.message.includes('cancelled')) {
+      return 'low';
+    }
+
     // Network errors are usually medium severity
     if (error.message.includes('network') || error.message.includes('fetch')) {
       return 'medium';
@@ -183,28 +188,42 @@ class ErrorHandler {
       // Store reports
       await this.storeReports();
 
-      // Log the error
-      logger.error(
-        `${errorSeverity.toUpperCase()}: ${error.message}`,
-        {
-          errorId: errorReport.id,
+      // Log the error (use appropriate log level based on severity)
+      if (errorSeverity === 'low') {
+        logger.debug(
+          `${errorSeverity.toUpperCase()}: ${error.message}`,
+          {
+            errorId: errorReport.id,
+            severity: errorSeverity,
+            context,
+          },
+          context.userId
+        );
+      } else {
+        logger.error(
+          `${errorSeverity.toUpperCase()}: ${error.message}`,
+          {
+            errorId: errorReport.id,
+            severity: errorSeverity,
+            context,
+            stack: error.stack,
+          },
+          context.userId
+        );
+      }
+
+      // Track in analytics (skip low severity errors to reduce noise)
+      if (errorSeverity !== 'low') {
+        await analyticsService.trackError(error, {
+          error_id: errorReport.id,
           severity: errorSeverity,
-          context,
-          stack: error.stack,
-        },
-        context.userId
-      );
+          handled,
+          ...context,
+        });
+      }
 
-      // Track in analytics
-      await analyticsService.trackError(error, {
-        error_id: errorReport.id,
-        severity: errorSeverity,
-        handled,
-        ...context,
-      });
-
-      // Send to crash reporting service in production
-      if (CONFIG.FEATURES.ENABLE_CRASH_REPORTING && !handled) {
+      // Send to crash reporting service in production (skip low severity errors)
+      if (CONFIG.FEATURES.ENABLE_CRASH_REPORTING && !handled && errorSeverity !== 'low') {
         await this.sendToCrashReporting(errorReport, errorSeverity);
       }
 
