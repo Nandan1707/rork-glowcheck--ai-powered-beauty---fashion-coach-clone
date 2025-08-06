@@ -79,9 +79,9 @@ export default function PremiumModal({ visible, onClose, onUpgrade, isLoading = 
             <View style={styles.crownContainer}>
               <Crown size={48} color={COLORS.gold} />
             </View>
-            <Text style={styles.title}>Unlock Your Glow-Up Plan</Text>
+            <Text style={styles.title}>Unlock Your Personalized Plan</Text>
             <Text style={styles.subtitle}>
-              Subscribe to get your personalized AI-powered glow-up plan
+              Subscribe to premium to access your full 30-day routine.
             </Text>
           </View>
 
