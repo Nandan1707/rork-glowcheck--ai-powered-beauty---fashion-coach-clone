@@ -10,7 +10,7 @@ import Button from '@/components/Button';
 import Card from '@/components/Card';
 import ProgressBar from '@/components/ProgressBar';
 import PremiumModal from '@/components/PremiumModal';
-import { COLORS } from '@/constants/colors';
+import Colors from '@/constants/colors';
 import { aiService, GlowAnalysisResult } from '@/lib/ai-service';
 import { useAuth } from '@/hooks/auth-store';
 
@@ -461,7 +461,7 @@ export default function GlowAnalysisScreen() {
               <Animated.View style={[
                 styles.cameraGuideCircle,
                 {
-                  borderColor: faceDetected ? COLORS.success : COLORS.white,
+                  borderColor: faceDetected ? Colors.success : Colors.white,
                   opacity: borderAnimation,
                 }
               ]} />
@@ -480,7 +480,7 @@ export default function GlowAnalysisScreen() {
             <Text style={[
               styles.cameraInstructions,
               {
-                color: faceDetected ? COLORS.success : COLORS.white,
+                color: faceDetected ? Colors.success : Colors.white,
               }
             ]}>
               {!cameraReady ? 'Preparing camera...' : faceDetectionMessage}
@@ -491,7 +491,7 @@ export default function GlowAnalysisScreen() {
               style={styles.cameraButton} 
               onPress={toggleCameraFacing}
             >
-              <RefreshCw color={COLORS.white} size={24} />
+              <RefreshCw color={Colors.white} size={24} />
             </TouchableOpacity>
             <Animated.View style={[
               styles.captureButton,
@@ -511,7 +511,7 @@ export default function GlowAnalysisScreen() {
                 activeOpacity={faceDetected ? 0.7 : 1}
               >
                 {takingPicture ? (
-                  <ActivityIndicator size="small" color={COLORS.white} />
+                  <ActivityIndicator size="small" color={Colors.white} />
                 ) : (
                   <View style={[
                     styles.captureButtonInner, 
@@ -545,7 +545,7 @@ export default function GlowAnalysisScreen() {
         <View style={styles.startContainer}>
           <View style={styles.scanIconContainer}>
             <View style={styles.scanIcon}>
-              <Camera size={48} color={COLORS.primary} />
+              <Camera size={48} color={Colors.primary} />
             </View>
           </View>
           <Text style={styles.startTitle}>Scan Your Face</Text>
@@ -556,7 +556,7 @@ export default function GlowAnalysisScreen() {
             <Button
               title="Start Face Scan"
               onPress={toggleCamera}
-              leftIcon={<Camera size={18} color={COLORS.white} />}
+              leftIcon={<Camera size={18} color={Colors.white} />}
               style={styles.button}
               testID="take-selfie-button"
             />
@@ -576,7 +576,7 @@ export default function GlowAnalysisScreen() {
             style={styles.capturedImage}
           />
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={COLORS.primary} />
+            <ActivityIndicator size="large" color={Colors.primary} />
             <Text style={styles.analyzingText}>Scanning in progress...</Text>
             <Text style={styles.analyzingSubtext}>
               AI is analyzing your facial features, skin quality, and symmetry
@@ -643,7 +643,7 @@ export default function GlowAnalysisScreen() {
                 progress={analysisResult?.jawlineScore || 75} 
                 height={10}
                 showPercentage
-                color={COLORS.primary}
+                color={Colors.primary}
               />
               
               <Text style={styles.metricsLabel}>Brightness & Glow</Text>
@@ -651,7 +651,7 @@ export default function GlowAnalysisScreen() {
                 progress={analysisResult?.brightness || 0} 
                 height={10}
                 showPercentage
-                color={COLORS.secondary}
+                color={Colors.secondary}
               />
               
               <Text style={styles.metricsLabel}>Hydration Level</Text>
@@ -659,7 +659,7 @@ export default function GlowAnalysisScreen() {
                 progress={analysisResult?.hydration || 0} 
                 height={10}
                 showPercentage
-                color={COLORS.info}
+                color={Colors.info}
               />
               
               <Text style={styles.metricsLabel}>Facial Symmetry</Text>
@@ -667,7 +667,7 @@ export default function GlowAnalysisScreen() {
                 progress={analysisResult?.symmetryScore || 0} 
                 height={10}
                 showPercentage
-                color={COLORS.success}
+                color={Colors.success}
               />
             </View>
           </Card>
@@ -675,7 +675,7 @@ export default function GlowAnalysisScreen() {
           <Card style={styles.tipsCard}>
             <View style={styles.tipsHeader}>
               <Text style={styles.tipsTitle}>🤖 Personalized AI Beauty Tips</Text>
-              <Sparkles size={16} color={COLORS.primary} />
+              <Sparkles size={16} color={Colors.primary} />
             </View>
             
             {(analysisResult?.aiTips || analysisResult?.tips || []).map((tip: string, index: number) => (
@@ -705,7 +705,7 @@ export default function GlowAnalysisScreen() {
                   }
                 });
               }}
-              leftIcon={<Sparkles size={18} color={COLORS.white} />}
+              leftIcon={<Sparkles size={18} color={Colors.white} />}
               style={styles.primaryActionButton}
               testID="start-glow-plan-button"
             />
@@ -769,7 +769,7 @@ export default function GlowAnalysisScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: Colors.background,
   },
   startContainer: {
     padding: 20,
@@ -783,21 +783,21 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: COLORS.primary + '10',
+    backgroundColor: Colors.primary + '10',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: COLORS.primary + '20',
+    borderColor: Colors.primary + '20',
   },
   startTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: COLORS.textDark,
+    color: Colors.textDark,
     marginBottom: 12,
   },
   startDescription: {
     fontSize: 16,
-    color: COLORS.textLight,
+    color: Colors.textLight,
     textAlign: 'center',
     marginBottom: 30,
     lineHeight: 24,
@@ -811,7 +811,7 @@ const styles = StyleSheet.create({
   },
   cameraContainer: {
     flex: 1,
-    backgroundColor: COLORS.black,
+    backgroundColor: Colors.black,
   },
   camera: {
     flex: 1,
@@ -827,7 +827,7 @@ const styles = StyleSheet.create({
     height: 250,
     borderRadius: 125,
     borderWidth: 3,
-    borderColor: COLORS.white,
+    borderColor: Colors.white,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
@@ -839,7 +839,7 @@ const styles = StyleSheet.create({
     borderRadius: 115,
     borderWidth: 2,
     borderStyle: 'dashed',
-    borderColor: COLORS.white,
+    borderColor: Colors.white,
     position: 'relative',
     justifyContent: 'center',
     alignItems: 'center',
@@ -847,13 +847,13 @@ const styles = StyleSheet.create({
   faceIndicator: {
     position: 'absolute',
     borderWidth: 2,
-    borderColor: COLORS.success,
+    borderColor: Colors.success,
     borderRadius: 40,
     backgroundColor: 'rgba(34, 197, 94, 0.1)',
   },
 
   cameraInstructions: {
-    color: COLORS.white,
+    color: Colors.white,
     fontSize: 16,
     textAlign: 'center',
     paddingHorizontal: 40,
@@ -890,18 +890,18 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: COLORS.white,
+    backgroundColor: Colors.white,
     opacity: 0.3,
   },
   captureButtonInnerActive: {
     opacity: 1,
-    backgroundColor: COLORS.success,
+    backgroundColor: Colors.success,
   },
   captureButtonDisabled: {
     opacity: 0.5,
   },
   cancelText: {
-    color: COLORS.white,
+    color: Colors.white,
     fontSize: 16,
   },
   analyzingContainer: {
@@ -920,13 +920,13 @@ const styles = StyleSheet.create({
   },
   analyzingText: {
     fontSize: 18,
-    color: COLORS.textDark,
+    color: Colors.textDark,
     marginTop: 16,
     fontWeight: '600',
   },
   analyzingSubtext: {
     fontSize: 14,
-    color: COLORS.textLight,
+    color: Colors.textLight,
     marginTop: 8,
     textAlign: 'center',
     paddingHorizontal: 20,
@@ -950,14 +950,14 @@ const styles = StyleSheet.create({
   },
   scoreLabel: {
     fontSize: 16,
-    color: COLORS.textLight,
+    color: Colors.textLight,
     marginBottom: 8,
   },
   scoreCircle: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: COLORS.primary,
+    backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
@@ -965,17 +965,17 @@ const styles = StyleSheet.create({
   scoreValue: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: COLORS.white,
+    color: Colors.white,
   },
   scoreOutOf: {
     fontSize: 14,
-    color: COLORS.white,
+    color: Colors.white,
     opacity: 0.8,
   },
   scoreFeedback: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.primary,
+    color: Colors.primary,
   },
   analysisCard: {
     marginBottom: 20,
@@ -991,20 +991,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 8,
-    backgroundColor: COLORS.primary + '10',
+    backgroundColor: Colors.primary + '10',
     borderRadius: 12,
     marginHorizontal: 4,
   },
   analysisItemLabel: {
     fontSize: 12,
-    color: COLORS.textLight,
+    color: Colors.textLight,
     marginBottom: 4,
     textAlign: 'center',
   },
   analysisItemValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.primary,
+    color: Colors.primary,
     textAlign: 'center',
   },
   metricsCard: {
@@ -1014,7 +1014,7 @@ const styles = StyleSheet.create({
   analysisTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: COLORS.textDark,
+    color: Colors.textDark,
     marginBottom: 16,
   },
   skinToneContainer: {
@@ -1024,23 +1024,23 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: Colors.border,
   },
   skinToneLabel: {
     fontSize: 16,
-    color: COLORS.textDark,
+    color: Colors.textDark,
   },
   skinToneValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.primary,
+    color: Colors.primary,
   },
   metricsContainer: {
     gap: 8,
   },
   metricsLabel: {
     fontSize: 16,
-    color: COLORS.textDark,
+    color: Colors.textDark,
     marginTop: 8,
   },
   tipsCard: {
@@ -1056,7 +1056,7 @@ const styles = StyleSheet.create({
   tipsTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: COLORS.textDark,
+    color: Colors.textDark,
   },
   tipItem: {
     flexDirection: 'row',
@@ -1067,21 +1067,21 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: COLORS.primary,
+    backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
     marginTop: 2,
   },
   tipBulletText: {
-    color: COLORS.white,
+    color: Colors.white,
     fontSize: 14,
     fontWeight: 'bold',
   },
   tipText: {
     flex: 1,
     fontSize: 16,
-    color: COLORS.text,
+    color: Colors.text,
     lineHeight: 24,
   },
   actionButtons: {
@@ -1154,12 +1154,12 @@ function PersonalizedRecommendations({ analysisResult, onClose, onStartCoaching 
         <Card style={recommendationStyles.card} gradient>
           <View style={recommendationStyles.header}>
             <View style={recommendationStyles.headerLeft}>
-              <Sparkles size={24} color={COLORS.primary} />
+              <Sparkles size={24} color={Colors.primary} />
               <Text style={recommendationStyles.title}>Your Personalized Plan</Text>
             </View>
             {isPremium && (
               <View style={recommendationStyles.premiumBadge}>
-                <Crown size={16} color={COLORS.gold} />
+                <Crown size={16} color={Colors.gold} />
                 <Text style={recommendationStyles.premiumText}>Premium</Text>
               </View>
             )}
@@ -1188,7 +1188,7 @@ function PersonalizedRecommendations({ analysisResult, onClose, onStartCoaching 
                   )}
                 </View>
                 <View style={recommendationStyles.recommendationContent}>
-                  <Target size={16} color={COLORS.primary} />
+                  <Target size={16} color={Colors.primary} />
                   <Text style={[
                     recommendationStyles.recommendationText,
                     selectedRecommendation === recommendation && recommendationStyles.recommendationTextSelected,
@@ -1234,7 +1234,7 @@ function PersonalizedRecommendations({ analysisResult, onClose, onStartCoaching 
               <TextInput
                 style={recommendationStyles.customInput}
                 placeholder="e.g., Get glowing skin for my wedding, Clear up acne, Build confidence..."
-                placeholderTextColor={COLORS.textLight}
+                placeholderTextColor={Colors.textLight}
                 value={customGoal}
                 onChangeText={setCustomGoal}
                 multiline
@@ -1250,7 +1250,7 @@ function PersonalizedRecommendations({ analysisResult, onClose, onStartCoaching 
               onPress={handleStartCoaching}
               disabled={!selectedRecommendation && (!showCustomInput || !customGoal.trim())}
               style={recommendationStyles.createButton}
-              leftIcon={<Sparkles size={18} color={COLORS.white} />}
+              leftIcon={<Sparkles size={18} color={Colors.white} />}
               testID="create-plan-button"
             />
             <Button
@@ -1300,13 +1300,13 @@ const recommendationStyles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: COLORS.textDark,
+    color: Colors.textDark,
     marginLeft: 8,
   },
   premiumBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.gold + '20',
+    backgroundColor: Colors.gold + '20',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -1314,12 +1314,12 @@ const recommendationStyles = StyleSheet.create({
   premiumText: {
     fontSize: 12,
     fontWeight: '600',
-    color: COLORS.gold,
+    color: Colors.gold,
     marginLeft: 4,
   },
   subtitle: {
     fontSize: 16,
-    color: COLORS.textLight,
+    color: Colors.textLight,
     lineHeight: 22,
     marginBottom: 20,
   },
@@ -1334,32 +1334,32 @@ const recommendationStyles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.white,
+    borderColor: Colors.border,
+    backgroundColor: Colors.white,
   },
   recommendationSelected: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primary + '10',
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primary + '10',
   },
   recommendationRadio: {
     width: 20,
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: COLORS.border,
+    borderColor: Colors.border,
     marginRight: 12,
     marginTop: 2,
     justifyContent: 'center',
     alignItems: 'center',
   },
   recommendationRadioSelected: {
-    borderColor: COLORS.primary,
+    borderColor: Colors.primary,
   },
   recommendationRadioInner: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: COLORS.primary,
+    backgroundColor: Colors.primary,
   },
   recommendationContent: {
     flexDirection: 'row',
@@ -1368,13 +1368,13 @@ const recommendationStyles = StyleSheet.create({
   },
   recommendationText: {
     fontSize: 15,
-    color: COLORS.textDark,
+    color: Colors.textDark,
     marginLeft: 8,
     flex: 1,
     lineHeight: 20,
   },
   recommendationTextSelected: {
-    color: COLORS.primary,
+    color: Colors.primary,
     fontWeight: '500',
   },
   customOption: {
@@ -1384,20 +1384,20 @@ const recommendationStyles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.white,
+    borderColor: Colors.border,
+    backgroundColor: Colors.white,
   },
   customOptionSelected: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primary + '10',
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primary + '10',
   },
   customOptionText: {
     fontSize: 15,
-    color: COLORS.textDark,
+    color: Colors.textDark,
     fontStyle: 'italic',
   },
   customOptionTextSelected: {
-    color: COLORS.primary,
+    color: Colors.primary,
     fontWeight: '500',
   },
   customInputContainer: {
@@ -1406,17 +1406,17 @@ const recommendationStyles = StyleSheet.create({
   customInputLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.textDark,
+    color: Colors.textDark,
     marginBottom: 12,
   },
   customInput: {
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: Colors.border,
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: COLORS.textDark,
-    backgroundColor: COLORS.white,
+    color: Colors.textDark,
+    backgroundColor: Colors.white,
     minHeight: 80,
   },
   buttonContainer: {

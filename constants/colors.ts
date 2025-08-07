@@ -36,4 +36,6 @@ export default {
     tabIconDefault: "#ccc",
     tabIconSelected: COLORS.primary,
   },
+  // Add all colors for easy access
+  ...COLORS,
 };

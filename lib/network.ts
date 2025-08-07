@@ -65,7 +65,7 @@ class NetworkService {
 
     let lastError: NetworkError;
     let controller: AbortController | null = null;
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let timeoutId: NodeJS.Timeout | null = null;
 
     const cleanup = () => {
       if (timeoutId) {
@@ -88,7 +88,7 @@ class NetworkService {
             logger.debug('Request timeout, aborting', { url, timeout });
             controller.abort();
           }
-        }, timeout);
+        }, timeout) as NodeJS.Timeout;
 
         // Merge signals if one was provided in options
         let signal = controller.signal;

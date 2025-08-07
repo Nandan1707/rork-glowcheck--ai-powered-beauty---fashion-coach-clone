@@ -9,7 +9,7 @@ import Button from '@/components/Button';
 import Card from '@/components/Card';
 import ProgressBar from '@/components/ProgressBar';
 import Input from '@/components/Input';
-import { COLORS } from '@/constants/colors';
+import Colors from '@/constants/colors';
 import { useAuth } from '@/hooks/auth-store';
 import { GlowUpPlan, GlowUpDayTask, GlowUpProgress } from '@/types';
 import { aiService } from '@/lib/ai-service';
@@ -79,10 +79,7 @@ export default function GlowUpPlanScreen() {
             body: `Day ${day} of your 30-day plan is waiting for you!`,
             data: { day, planId: plan?.id },
           },
-          trigger: {
-            type: 'date',
-            date: notificationDate,
-          } as any,
+          trigger: notificationDate,
         });
       }
       
@@ -395,12 +392,12 @@ export default function GlowUpPlanScreen() {
 
   const getTaskIcon = (type: string) => {
     switch (type) {
-      case 'skincare': return <Heart size={20} color={COLORS.primary} />;
-      case 'hydration': return <Droplets size={20} color={COLORS.info} />;
-      case 'sleep': return <Moon size={20} color={COLORS.secondary} />;
-      case 'exercise': return <Dumbbell size={20} color={COLORS.success} />;
-      case 'nutrition': return <Apple size={20} color={COLORS.warning} />;
-      default: return <Circle size={20} color={COLORS.textLight} />;
+      case 'skincare': return <Heart size={20} color={Colors.primary} />;
+      case 'hydration': return <Droplets size={20} color={Colors.info} />;
+      case 'sleep': return <Moon size={20} color={Colors.secondary} />;
+      case 'exercise': return <Dumbbell size={20} color={Colors.success} />;
+      case 'nutrition': return <Apple size={20} color={Colors.warning} />;
+      default: return <Circle size={20} color={Colors.textLight} />;
     }
   };
 
@@ -473,7 +470,7 @@ export default function GlowUpPlanScreen() {
                 Alert.alert('Notifications', 'Daily reminders are already enabled!');
               }
             }}>
-              <Bell size={24} color={notificationPermission ? COLORS.primary : COLORS.textLight} />
+              <Bell size={24} color={notificationPermission ? Colors.primary : Colors.textLight} />
             </TouchableOpacity>
           ),
         }} 
@@ -487,7 +484,7 @@ export default function GlowUpPlanScreen() {
             <Text style={styles.progressSubtitle}>{plan.goal}</Text>
           </View>
           <View style={styles.streakContainer}>
-            <Flame size={24} color={COLORS.warning} />
+            <Flame size={24} color={Colors.warning} />
             <Text style={styles.streakText}>{streakDays}</Text>
             <Text style={styles.streakLabel}>day streak</Text>
           </View>
@@ -541,7 +538,7 @@ export default function GlowUpPlanScreen() {
                   {day}
                 </Text>
                 {dayCompleted && (
-                  <CheckCircle size={12} color={COLORS.white} style={styles.dayCompletedIcon} />
+                  <CheckCircle size={12} color={Colors.white} style={styles.dayCompletedIcon} />
                 )}
               </TouchableOpacity>
             );
@@ -557,7 +554,7 @@ export default function GlowUpPlanScreen() {
             <Text style={styles.tasksProgressText}>
               {completedTasks}/{currentDayTasks.length} completed
             </Text>
-            <Trophy size={16} color={completedTasks === currentDayTasks.length && currentDayTasks.length > 0 ? COLORS.gold : COLORS.textLight} />
+            <Trophy size={16} color={completedTasks === currentDayTasks.length && currentDayTasks.length > 0 ? Colors.gold : Colors.textLight} />
           </View>
         </View>
         
@@ -568,9 +565,9 @@ export default function GlowUpPlanScreen() {
               onPress={() => toggleTaskCompletion(task.id)}
             >
               {task.completed ? (
-                <CheckCircle size={24} color={COLORS.success} />
+                <CheckCircle size={24} color={Colors.success} />
               ) : (
-                <Circle size={24} color={COLORS.textLight} />
+                <Circle size={24} color={Colors.textLight} />
               )}
             </TouchableOpacity>
             
@@ -608,7 +605,7 @@ export default function GlowUpPlanScreen() {
                             setProductInput(task.user_product || '');
                           }}
                         >
-                          <Edit3 size={16} color={COLORS.primary} />
+                          <Edit3 size={16} color={Colors.primary} />
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -620,7 +617,7 @@ export default function GlowUpPlanScreen() {
                         setProductInput('');
                       }}
                     >
-                      <Plus size={16} color={COLORS.primary} />
+                      <Plus size={16} color={Colors.primary} />
                       <Text style={styles.addProductText}>Add your product</Text>
                     </TouchableOpacity>
                   )}
@@ -718,29 +715,29 @@ export default function GlowUpPlanScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: Colors.background,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.background,
+    backgroundColor: Colors.background,
   },
   loadingText: {
     fontSize: 16,
-    color: COLORS.textLight,
+    color: Colors.textLight,
     textAlign: 'center',
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.background,
+    backgroundColor: Colors.background,
     padding: 20,
   },
   errorText: {
     fontSize: 18,
-    color: COLORS.textDark,
+    color: Colors.textDark,
     marginBottom: 20,
     textAlign: 'center',
   },
@@ -763,17 +760,17 @@ const styles = StyleSheet.create({
   progressTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: COLORS.textDark,
+    color: Colors.textDark,
     marginBottom: 4,
   },
   progressSubtitle: {
     fontSize: 16,
-    color: COLORS.textLight,
+    color: Colors.textLight,
     lineHeight: 22,
   },
   streakContainer: {
     alignItems: 'center',
-    backgroundColor: COLORS.warning + '20',
+    backgroundColor: Colors.warning + '20',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 12,
@@ -781,12 +778,12 @@ const styles = StyleSheet.create({
   streakText: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: COLORS.warning,
+    color: Colors.warning,
     marginTop: 4,
   },
   streakLabel: {
     fontSize: 12,
-    color: COLORS.warning,
+    color: Colors.warning,
     marginTop: 2,
   },
   progressBarContainer: {
@@ -797,7 +794,7 @@ const styles = StyleSheet.create({
   },
   progressText: {
     fontSize: 14,
-    color: COLORS.textLight,
+    color: Colors.textLight,
     textAlign: 'center',
   },
   dayNavCard: {
@@ -814,11 +811,11 @@ const styles = StyleSheet.create({
   dayNavTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: COLORS.textDark,
+    color: Colors.textDark,
   },
   todayButton: {
     fontSize: 16,
-    color: COLORS.primary,
+    color: Colors.primary,
     fontWeight: '500',
   },
   dayNavScroll: {
@@ -828,36 +825,36 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: COLORS.background,
+    backgroundColor: Colors.background,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: Colors.border,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,
     position: 'relative',
   },
   dayButtonActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   dayButtonCompleted: {
-    backgroundColor: COLORS.success,
-    borderColor: COLORS.success,
+    backgroundColor: Colors.success,
+    borderColor: Colors.success,
   },
   dayButtonToday: {
-    borderColor: COLORS.primary,
+    borderColor: Colors.primary,
     borderWidth: 2,
   },
   dayButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.textDark,
+    color: Colors.textDark,
   },
   dayButtonTextActive: {
-    color: COLORS.white,
+    color: Colors.white,
   },
   dayButtonTextCompleted: {
-    color: COLORS.white,
+    color: Colors.white,
   },
   dayCompletedIcon: {
     position: 'absolute',
@@ -878,7 +875,7 @@ const styles = StyleSheet.create({
   tasksTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: COLORS.textDark,
+    color: Colors.textDark,
   },
   tasksProgress: {
     flexDirection: 'row',
@@ -887,7 +884,7 @@ const styles = StyleSheet.create({
   },
   tasksProgressText: {
     fontSize: 14,
-    color: COLORS.textLight,
+    color: Colors.textLight,
   },
   taskItem: {
     flexDirection: 'row',
@@ -895,7 +892,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     paddingBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: Colors.border,
   },
   taskCheckbox: {
     marginRight: 16,
@@ -912,16 +909,16 @@ const styles = StyleSheet.create({
   taskTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.textDark,
+    color: Colors.textDark,
     marginLeft: 8,
   },
   taskTitleCompleted: {
     textDecorationLine: 'line-through',
-    color: COLORS.textLight,
+    color: Colors.textLight,
   },
   taskDescription: {
     fontSize: 14,
-    color: COLORS.textLight,
+    color: Colors.textLight,
     lineHeight: 20,
     marginBottom: 12,
   },
@@ -929,21 +926,21 @@ const styles = StyleSheet.create({
     textDecorationLine: 'line-through',
   },
   productSection: {
-    backgroundColor: COLORS.background,
+    backgroundColor: Colors.background,
     padding: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: Colors.border,
   },
   productLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: COLORS.textLight,
+    color: Colors.textLight,
     marginBottom: 4,
   },
   productSuggestion: {
     fontSize: 14,
-    color: COLORS.textDark,
+    color: Colors.textDark,
     marginBottom: 8,
   },
   userProductContainer: {
@@ -952,7 +949,7 @@ const styles = StyleSheet.create({
   userProductLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: COLORS.primary,
+    color: Colors.primary,
     marginBottom: 4,
   },
   userProductRow: {
@@ -962,7 +959,7 @@ const styles = StyleSheet.create({
   },
   userProduct: {
     fontSize: 14,
-    color: COLORS.textDark,
+    color: Colors.textDark,
     fontWeight: '500',
     flex: 1,
   },
@@ -973,7 +970,7 @@ const styles = StyleSheet.create({
   },
   addProductText: {
     fontSize: 14,
-    color: COLORS.primary,
+    color: Colors.primary,
     marginLeft: 8,
     fontWeight: '500',
   },
@@ -999,7 +996,7 @@ const styles = StyleSheet.create({
   },
   noTasksText: {
     fontSize: 16,
-    color: COLORS.textLight,
+    color: Colors.textLight,
   },
   weeklyProgressCard: {
     marginHorizontal: 20,
@@ -1009,7 +1006,7 @@ const styles = StyleSheet.create({
   weeklyProgressTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: COLORS.textDark,
+    color: Colors.textDark,
     marginBottom: 16,
   },
   weekItem: {
@@ -1019,7 +1016,7 @@ const styles = StyleSheet.create({
   weekLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: COLORS.textDark,
+    color: Colors.textDark,
     marginBottom: 8,
   },
   weekProgressContainer: {
@@ -1031,7 +1028,7 @@ const styles = StyleSheet.create({
   },
   weekProgressText: {
     fontSize: 12,
-    color: COLORS.textLight,
+    color: Colors.textLight,
   },
   actionButtons: {
     flexDirection: 'row',
