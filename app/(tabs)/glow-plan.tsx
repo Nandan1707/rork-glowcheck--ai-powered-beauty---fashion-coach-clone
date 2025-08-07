@@ -125,9 +125,7 @@ export default function GlowUpPlanScreen() {
             body: "Your daily glow-up plan is waiting for you!",
             data: { planId: plan?.id },
           },
-          trigger: {
-            seconds: Math.floor((tomorrow.getTime() - Date.now()) / 1000),
-          },
+          trigger: Math.floor((tomorrow.getTime() - Date.now()) / 1000),
         });
         
         logger.info('Test notification scheduled for tomorrow');
