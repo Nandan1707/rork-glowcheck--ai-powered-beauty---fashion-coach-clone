@@ -79,9 +79,7 @@ export default function GlowUpPlanScreen() {
             body: `Day ${day} of your 30-day plan is waiting for you!`,
             data: { day, planId: plan?.id },
           },
-          trigger: {
-            date: notificationDate,
-          },
+          trigger: notificationDate,
         });
       }
       

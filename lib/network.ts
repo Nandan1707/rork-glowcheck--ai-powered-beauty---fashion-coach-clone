@@ -88,7 +88,7 @@ class NetworkService {
             logger.debug('Request timeout, aborting', { url, timeout });
             controller.abort();
           }
-        }, timeout) as any;
+        }, timeout) as unknown as any;
 
         // Merge signals if one was provided in options
         let signal = controller.signal;
