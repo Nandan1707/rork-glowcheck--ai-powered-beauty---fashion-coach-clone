@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, RefreshControl, ActivityIndicator, Platform } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { CheckCircle, Circle, Droplets, Moon, Dumbbell, Apple, Heart, Plus, Edit3, Bell, Trophy, Flame } from 'lucide-react-native';
 import * as Notifications from 'expo-notifications';
@@ -41,52 +41,96 @@ export default function GlowUpPlanScreen() {
 
   const checkNotificationPermission = async () => {
     try {
+      // Notifications have limited support in Expo Go SDK 53
+      if (Platform.OS === 'web') {
+        setNotificationPermission(false);
+        return;
+      }
+      
       const { status } = await Notifications.getPermissionsAsync();
       setNotificationPermission(status === 'granted');
     } catch (error) {
       logger.warn('Failed to check notification permission', error as Error);
+      setNotificationPermission(false);
     }
   };
 
   const requestNotificationPermission = async () => {
     try {
-      const { status } = await Notifications.requestPermissionsAsync();
-      setNotificationPermission(status === 'granted');
-      
-      if (status === 'granted') {
-        await scheduleNotifications();
-        Alert.alert('Notifications Enabled', 'You will receive daily reminders at 9:30 PM to complete your glow-up routine!');
+      if (Platform.OS === 'web') {
+        Alert.alert(
+          'Notifications Not Available',
+          'Push notifications are not supported in the web version. Use the mobile app for notification reminders!'
+        );
+        return;
       }
+      
+      // Show info about Expo Go limitations
+      Alert.alert(
+        'Notification Reminder',
+        'Due to Expo Go limitations in SDK 53, push notifications have limited functionality. For full notification support, consider using a development build.\n\nWould you still like to enable local notifications?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Enable', 
+            onPress: async () => {
+              try {
+                const { status } = await Notifications.requestPermissionsAsync();
+                setNotificationPermission(status === 'granted');
+                
+                if (status === 'granted') {
+                  await scheduleNotifications();
+                  Alert.alert('Notifications Enabled', 'Local notifications have been set up. Note: functionality may be limited in Expo Go.');
+                } else {
+                  Alert.alert('Permission Denied', 'Notification permission was not granted.');
+                }
+              } catch (error) {
+                logger.error('Failed to request notification permission', error as Error);
+                Alert.alert('Error', 'Failed to set up notifications. This feature has limited support in Expo Go.');
+              }
+            }
+          }
+        ]
+      );
     } catch (error) {
       logger.error('Failed to request notification permission', error as Error);
+      Alert.alert('Error', 'Failed to set up notifications. This feature has limited support in Expo Go.');
     }
   };
 
   const scheduleNotifications = async () => {
     try {
+      if (Platform.OS === 'web') {
+        logger.warn('Notifications not supported on web platform');
+        return;
+      }
+      
       // Cancel existing notifications
       await Notifications.cancelAllScheduledNotificationsAsync();
       
       // Schedule daily notifications for 30 days
+      // Note: This has limited functionality in Expo Go SDK 53
       for (let day = 1; day <= 30; day++) {
         const notificationDate = new Date();
         notificationDate.setDate(notificationDate.getDate() + day - 1);
         notificationDate.setHours(21, 30, 0, 0); // 9:30 PM
         
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: "Don't forget your glow-up routine! ✨",
-            body: `Day ${day} of your 30-day plan is waiting for you!`,
-            data: { day, planId: plan?.id },
-          },
-          trigger: { 
-            type: 'date' as const,
-            date: notificationDate 
-          },
-        });
+        try {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: "Don't forget your glow-up routine! ✨",
+              body: `Day ${day} of your 30-day plan is waiting for you!`,
+              data: { day, planId: plan?.id },
+            },
+            trigger: notificationDate,
+          });
+        } catch (scheduleError) {
+          logger.warn(`Failed to schedule notification for day ${day}`, scheduleError as Error);
+          // Continue with other notifications even if one fails
+        }
       }
       
-      logger.info('Scheduled 30 daily notifications');
+      logger.info('Attempted to schedule 30 daily notifications (limited support in Expo Go)');
     } catch (error) {
       logger.error('Failed to schedule notifications', error as Error);
     }
@@ -473,7 +517,12 @@ export default function GlowUpPlanScreen() {
               if (!notificationPermission) {
                 requestNotificationPermission();
               } else {
-                Alert.alert('Notifications', 'Daily reminders are already enabled!');
+                Alert.alert(
+                  'Notifications Status', 
+                  Platform.OS === 'web' 
+                    ? 'Notifications are not supported in the web version. Use the mobile app for notification reminders!' 
+                    : 'Daily reminders are enabled! Note: functionality may be limited in Expo Go.'
+                );
               }
             }}>
               <Bell size={24} color={notificationPermission ? Colors.light.tint : Colors.light.tabIconDefault} />
