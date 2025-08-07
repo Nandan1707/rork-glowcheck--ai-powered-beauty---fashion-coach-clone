@@ -5,9 +5,9 @@ import { useState, useEffect } from 'react';
 import { router } from 'expo-router';
 import { Alert } from 'react-native';
 
-import { supabase, signIn, signUp, signOut, getCurrentUser } from '@/lib/supabase';
+import { supabase, signIn, signUp, signOut, getCurrentUser, getUserProfile, updateUserProfile } from '@/lib/supabase';
 import { subscriptionService, SubscriptionStatus } from '@/lib/subscription-service';
-import { User } from '@/types';
+import { User, UserProfile } from '@/types';
 
 export const [AuthContext, useAuth] = createContextHook(() => {
   const [user, setUser] = useState<User | null>(null);
@@ -22,19 +22,27 @@ export const [AuthContext, useAuth] = createContextHook(() => {
       try {
         const currentUser = await getCurrentUser();
         if (currentUser) {
-          // Fetch additional user data from the database
-          const { data } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', currentUser.id)
-            .single();
+          // Fetch user profile from the database
+          const { data: profile } = await getUserProfile(currentUser.id);
+          
+          // Fallback to users table if profile doesn't exist
+          let userData = null;
+          if (!profile) {
+            const { data } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', currentUser.id)
+              .single();
+            userData = data;
+          }
             
           setUser({
             id: currentUser.id,
             email: currentUser.email || '',
-            name: data?.name,
-            avatar_url: data?.avatar_url,
-            subscription_tier: data?.subscription_tier || 'free',
+            name: profile?.name || userData?.name || currentUser.user_metadata?.name,
+            avatar_url: profile?.avatar_url || userData?.avatar_url,
+            subscription_tier: userData?.subscription_tier || 'free',
+            profile: profile || undefined,
           });
           
           // Check subscription status
@@ -53,20 +61,30 @@ export const [AuthContext, useAuth] = createContextHook(() => {
     // Listen for auth state changes
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event: string, session: any) => {
+        console.log('Auth state changed:', event, !!session?.user);
+        
         if (event === 'SIGNED_IN' && session?.user) {
-          // Fetch user data from the database
-          const { data } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
+          // Fetch user profile from the database
+          const { data: profile } = await getUserProfile(session.user.id);
+          
+          // Fallback to users table if profile doesn't exist
+          let userData = null;
+          if (!profile) {
+            const { data } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+            userData = data;
+          }
             
           setUser({
             id: session.user.id,
             email: session.user.email || '',
-            name: data?.name,
-            avatar_url: data?.avatar_url,
-            subscription_tier: data?.subscription_tier || 'free',
+            name: profile?.name || userData?.name || session.user.user_metadata?.name,
+            avatar_url: profile?.avatar_url || userData?.avatar_url,
+            subscription_tier: userData?.subscription_tier || 'free',
+            profile: profile || undefined,
           });
           
           // Check subscription status
@@ -75,6 +93,10 @@ export const [AuthContext, useAuth] = createContextHook(() => {
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
           setSubscriptionStatus({ isActive: false });
+          // Clear any cached data
+          await AsyncStorage.multiRemove(['userProfile', 'lastScanData', 'glowPlanProgress']);
+        } else if (event === 'TOKEN_REFRESHED') {
+          console.log('Token refreshed successfully');
         }
       }
     );
@@ -97,23 +119,40 @@ export const [AuthContext, useAuth] = createContextHook(() => {
 
   const registerMutation = useMutation({
     mutationFn: async ({ email, password, name }: { email: string; password: string; name: string }) => {
-      const { data, error } = await signUp(email, password);
+      const { data, error } = await signUp(email, password, { name });
       if (error) throw error;
       
       // Create user profile in the database
       if (data.user) {
+        // Create entry in users table for subscription management
         await supabase.from('users').insert({
           id: data.user.id,
           email: data.user.email,
           name,
           subscription_tier: 'free',
         });
+        
+        // Create detailed profile
+        await updateUserProfile(data.user.id, {
+          name,
+          onboarding_completed: false,
+        });
       }
       
       return data;
     },
-    onSuccess: () => {
-      router.replace('/(tabs)');
+    onSuccess: (data) => {
+      // Check if user needs onboarding
+      if (data?.user?.email_confirmed_at) {
+        router.replace('/(tabs)');
+      } else {
+        // Show email confirmation message
+        Alert.alert(
+          'Check Your Email',
+          'We\'ve sent you a confirmation link. Please check your email and click the link to activate your account.',
+          [{ text: 'OK' }]
+        );
+      }
     },
   });
 
@@ -123,9 +162,24 @@ export const [AuthContext, useAuth] = createContextHook(() => {
       if (error) throw error;
       return null;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       setUser(null);
+      setSubscriptionStatus({ isActive: false });
       queryClient.clear();
+      
+      // Clear all stored data
+      try {
+        await AsyncStorage.multiRemove([
+          'userProfile',
+          'lastScanData', 
+          'glowPlanProgress',
+          'userSettings',
+          'cachedAnalyses'
+        ]);
+      } catch (error) {
+        console.warn('Error clearing storage on logout:', error);
+      }
+      
       router.replace('/onboarding');
     },
   });
@@ -211,6 +265,38 @@ export const [AuthContext, useAuth] = createContextHook(() => {
     }
   };
   
+  const updateProfile = async (updates: Partial<UserProfile>): Promise<{ success: boolean; error?: string }> => {
+    if (!user) {
+      return { success: false, error: 'User not authenticated' };
+    }
+    
+    try {
+      const { data, error } = await updateUserProfile(user.id, updates);
+      if (error) throw error;
+      
+      // Update local user state
+      setUser({
+        ...user,
+        name: updates.name || user.name,
+        avatar_url: updates.avatar_url || user.avatar_url,
+        profile: { ...user.profile, ...data } as UserProfile,
+      });
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      return { success: false, error: 'Failed to update profile' };
+    }
+  };
+  
+  const hasCompletedScan = (): boolean => {
+    return !!user?.profile?.last_scan_date;
+  };
+  
+  const requiresOnboarding = (): boolean => {
+    return !user?.profile?.onboarding_completed;
+  };
+  
   const checkPremiumAccess = (feature: string, allowDemo: boolean = false): boolean => {
     if (!user) return false;
     
@@ -247,6 +333,9 @@ export const [AuthContext, useAuth] = createContextHook(() => {
     login: loginMutation.mutate,
     register: registerMutation.mutate,
     logout: logoutMutation.mutate,
+    updateProfile,
+    hasCompletedScan,
+    requiresOnboarding,
     startFreeTrial,
     subscribeToPlan,
     upgradeToPremium,

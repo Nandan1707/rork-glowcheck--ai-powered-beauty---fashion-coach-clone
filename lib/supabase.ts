@@ -32,10 +32,13 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
-export async function signUp(email: string, password: string) {
+export async function signUp(email: string, password: string, metadata?: { name?: string }) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
+    options: {
+      data: metadata || {},
+    },
   });
   return { data, error };
 }
@@ -84,4 +87,49 @@ export async function signOut() {
 export async function getCurrentUser() {
   const { data: { user } } = await supabase.auth.getUser();
   return user;
+}
+
+export async function updateUserProfile(userId: string, updates: {
+  name?: string;
+  avatar_url?: string;
+  skin_type?: string;
+  goals?: string[];
+  onboarding_completed?: boolean;
+  last_scan_date?: string;
+}) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .upsert({
+      id: userId,
+      updated_at: new Date().toISOString(),
+      ...updates,
+    })
+    .select()
+    .single();
+  
+  return { data, error };
+}
+
+export async function getUserProfile(userId: string) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single();
+  
+  return { data, error };
+}
+
+export async function resetPassword(email: string) {
+  const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: 'https://your-app.com/reset-password',
+  });
+  return { data, error };
+}
+
+export async function updatePassword(newPassword: string) {
+  const { data, error } = await supabase.auth.updateUser({
+    password: newPassword,
+  });
+  return { data, error };
 }

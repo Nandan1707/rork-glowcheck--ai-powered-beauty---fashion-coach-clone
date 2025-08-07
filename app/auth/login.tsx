@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { Mail, Lock } from 'lucide-react-native';
 
 import { useAuth } from '@/hooks/auth-store';
@@ -99,7 +99,10 @@ export default function LoginScreen() {
               </Text>
             )}
 
-            <TouchableOpacity style={styles.forgotPassword}>
+            <TouchableOpacity 
+              style={styles.forgotPassword}
+              onPress={() => router.push('/auth/forgot-password')}
+            >
               <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
             </TouchableOpacity>
 

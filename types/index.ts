@@ -4,6 +4,26 @@ export interface User {
   name?: string;
   avatar_url?: string;
   subscription_tier: 'free' | 'premium';
+  profile?: UserProfile;
+}
+
+export interface UserProfile {
+  id: string;
+  name?: string;
+  avatar_url?: string;
+  skin_type?: 'oily' | 'dry' | 'combination' | 'sensitive' | 'normal';
+  goals?: string[];
+  onboarding_completed: boolean;
+  last_scan_date?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AuthSession {
+  user: User;
+  access_token: string;
+  refresh_token: string;
+  expires_at: number;
 }
 
 export interface GlowAnalysis {
