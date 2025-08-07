@@ -68,7 +68,7 @@ export default function GlowUpPlanScreen() {
       // Show info about Expo Go limitations
       Alert.alert(
         'Notification Reminder',
-        'Due to Expo Go limitations in SDK 53, push notifications have limited functionality. For full notification support, consider using a development build.\n\nWould you still like to enable local notifications?',
+        'Due to Expo Go limitations in SDK 53, push notifications have limited functionality. For full notification support, consider using a development build.\n\nWould you still like to enable basic notification permissions?',
         [
           { text: 'Cancel', style: 'cancel' },
           { 
@@ -108,34 +108,34 @@ export default function GlowUpPlanScreen() {
       // Cancel existing notifications
       await Notifications.cancelAllScheduledNotificationsAsync();
       
-      // Schedule daily notifications for 30 days
-      // Note: This has limited functionality in Expo Go SDK 53
-      for (let day = 1; day <= 30; day++) {
-        const notificationDate = new Date();
-        notificationDate.setDate(notificationDate.getDate() + day - 1);
-        notificationDate.setHours(21, 30, 0, 0); // 9:30 PM
-        
-        try {
-          await Notifications.scheduleNotificationAsync({
-            content: {
-              title: "Don't forget your glow-up routine! ✨",
-              body: `Day ${day} of your 30-day plan is waiting for you!`,
-              data: { day, planId: plan?.id },
-            },
-            trigger: {
-              type: 'date' as const,
-              date: notificationDate,
-            },
-          });
-        } catch (scheduleError) {
-          logger.warn(`Failed to schedule notification for day ${day}`, scheduleError as Error);
-          // Continue with other notifications even if one fails
-        }
-      }
+      // Note: Notification scheduling has limited functionality in Expo Go SDK 53
+      // For full notification support, a development build is required
+      logger.info('Notification scheduling is limited in Expo Go SDK 53. Use development build for full support.');
       
-      logger.info('Attempted to schedule 30 daily notifications (limited support in Expo Go)');
+      // Simple notification setup for development build users
+      try {
+        // Schedule a single test notification for tomorrow
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(21, 30, 0, 0); // 9:30 PM
+        
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: "Don't forget your glow-up routine! ✨",
+            body: "Your daily glow-up plan is waiting for you!",
+            data: { planId: plan?.id },
+          },
+          trigger: {
+            seconds: Math.floor((tomorrow.getTime() - Date.now()) / 1000),
+          },
+        });
+        
+        logger.info('Test notification scheduled for tomorrow');
+      } catch (scheduleError) {
+        logger.warn('Failed to schedule test notification', scheduleError as Error);
+      }
     } catch (error) {
-      logger.error('Failed to schedule notifications', error as Error);
+      logger.error('Failed to setup notifications', error as Error);
     }
   };
 
