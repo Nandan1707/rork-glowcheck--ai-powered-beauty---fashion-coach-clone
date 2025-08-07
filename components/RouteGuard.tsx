@@ -20,7 +20,7 @@ export default function RouteGuard({
   requireAuth = true,
   requireScan = false,
   requirePremium = false,
-  fallbackRoute = '/auth/login',
+  fallbackRoute = '/auth/login' as any,
 }: RouteGuardProps) {
   const { 
     isAuthenticated, 
@@ -66,7 +66,7 @@ export default function RouteGuard({
         </Text>
         <Button
           title="Start Glow Scan"
-          onPress={() => router.push('/glow-analysis')}
+          onPress={() => router.push('/(tabs)/glow-analysis' as any)}
           style={styles.guardButton}
         />
       </View>
@@ -83,7 +83,7 @@ export default function RouteGuard({
         </Text>
         <Button
           title="Upgrade to Premium"
-          onPress={() => router.push('/premium')}
+          onPress={() => router.push('/(tabs)/profile' as any)}
           style={styles.guardButton}
         />
       </View>
