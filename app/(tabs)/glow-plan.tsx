@@ -80,6 +80,7 @@ export default function GlowUpPlanScreen() {
             data: { day, planId: plan?.id },
           },
           trigger: {
+            type: 'date',
             date: notificationDate,
           },
         });
