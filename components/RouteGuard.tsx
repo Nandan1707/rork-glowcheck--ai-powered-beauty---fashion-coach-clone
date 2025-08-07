@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
+import type { Href } from 'expo-router';
 
 import { useAuth } from '@/hooks/auth-store';
 import Button from '@/components/Button';
@@ -12,7 +13,7 @@ interface RouteGuardProps {
   requireAuth?: boolean;
   requireScan?: boolean;
   requirePremium?: boolean;
-  fallbackRoute?: string;
+  fallbackRoute?: Href;
 }
 
 export default function RouteGuard({
@@ -20,14 +21,14 @@ export default function RouteGuard({
   requireAuth = true,
   requireScan = false,
   requirePremium = false,
-  fallbackRoute = '/auth/login' as any,
+  fallbackRoute = '/auth/login' as Href,
 }: RouteGuardProps) {
   const { 
     isAuthenticated, 
     isLoading, 
     hasCompletedScan, 
     checkPremiumAccess,
-    user 
+    user: _user 
   } = useAuth();
 
   if (isLoading) {
@@ -66,7 +67,7 @@ export default function RouteGuard({
         </Text>
         <Button
           title="Start Glow Scan"
-          onPress={() => router.push('/(tabs)/glow-analysis' as any)}
+          onPress={() => router.push('/(tabs)/glow-analysis' as Href)}
           style={styles.guardButton}
         />
       </View>
@@ -83,7 +84,7 @@ export default function RouteGuard({
         </Text>
         <Button
           title="Upgrade to Premium"
-          onPress={() => router.push('/(tabs)/profile' as any)}
+          onPress={() => router.push('/(tabs)/profile' as Href)}
           style={styles.guardButton}
         />
       </View>
