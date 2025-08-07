@@ -79,7 +79,9 @@ export default function GlowUpPlanScreen() {
             body: `Day ${day} of your 30-day plan is waiting for you!`,
             data: { day, planId: plan?.id },
           },
-          trigger: notificationDate,
+          trigger: {
+            date: notificationDate,
+          },
         });
       }
       
@@ -392,12 +394,12 @@ export default function GlowUpPlanScreen() {
 
   const getTaskIcon = (type: string) => {
     switch (type) {
-      case 'skincare': return <Heart size={20} color={Colors.primary} />;
+      case 'skincare': return <Heart size={20} color={Colors.light.tint} />;
       case 'hydration': return <Droplets size={20} color={Colors.info} />;
       case 'sleep': return <Moon size={20} color={Colors.secondary} />;
       case 'exercise': return <Dumbbell size={20} color={Colors.success} />;
       case 'nutrition': return <Apple size={20} color={Colors.warning} />;
-      default: return <Circle size={20} color={Colors.textLight} />;
+      default: return <Circle size={20} color={Colors.light.tabIconDefault} />;
     }
   };
 
@@ -427,7 +429,7 @@ export default function GlowUpPlanScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} style={{ marginBottom: 20 }} />
+        <ActivityIndicator size="large" color={Colors.light.tint} style={{ marginBottom: 20 }} />
         <Text style={styles.loadingText}>Setting up your 30-day glow-up plan...</Text>
         <Text style={styles.loadingSubtext}>Analyzing your skin data...</Text>
         <Text style={styles.loadingSubtext}>Finding the perfect products for your glow-up journey.</Text>
@@ -473,7 +475,7 @@ export default function GlowUpPlanScreen() {
                 Alert.alert('Notifications', 'Daily reminders are already enabled!');
               }
             }}>
-              <Bell size={24} color={notificationPermission ? Colors.primary : Colors.textLight} />
+              <Bell size={24} color={notificationPermission ? Colors.light.tint : Colors.light.tabIconDefault} />
             </TouchableOpacity>
           ),
         }} 
@@ -557,7 +559,7 @@ export default function GlowUpPlanScreen() {
             <Text style={styles.tasksProgressText}>
               {completedTasks}/{currentDayTasks.length} completed
             </Text>
-            <Trophy size={16} color={completedTasks === currentDayTasks.length && currentDayTasks.length > 0 ? Colors.gold : Colors.textLight} />
+            <Trophy size={16} color={completedTasks === currentDayTasks.length && currentDayTasks.length > 0 ? Colors.gold : Colors.light.tabIconDefault} />
           </View>
         </View>
         
@@ -570,7 +572,7 @@ export default function GlowUpPlanScreen() {
               {task.completed ? (
                 <CheckCircle size={24} color={Colors.success} />
               ) : (
-                <Circle size={24} color={Colors.textLight} />
+                <Circle size={24} color={Colors.light.tabIconDefault} />
               )}
             </TouchableOpacity>
             
@@ -608,7 +610,7 @@ export default function GlowUpPlanScreen() {
                             setProductInput(task.user_product || '');
                           }}
                         >
-                          <Edit3 size={16} color={Colors.primary} />
+                          <Edit3 size={16} color={Colors.light.tint} />
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -620,7 +622,7 @@ export default function GlowUpPlanScreen() {
                         setProductInput('');
                       }}
                     >
-                      <Plus size={16} color={Colors.primary} />
+                      <Plus size={16} color={Colors.light.tint} />
                       <Text style={styles.addProductText}>Add your product</Text>
                     </TouchableOpacity>
                   )}
