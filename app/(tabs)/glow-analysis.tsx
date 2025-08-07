@@ -772,12 +772,16 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   startContainer: {
-    padding: 20,
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 40,
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
   scanIconContainer: {
     alignItems: 'center',
-    marginVertical: 30,
+    marginBottom: 40,
   },
   scanIcon: {
     width: 120,
@@ -790,17 +794,19 @@ const styles = StyleSheet.create({
     borderColor: Colors.primary + '20',
   },
   startTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     color: Colors.textDark,
-    marginBottom: 12,
+    marginBottom: 16,
+    textAlign: 'center',
   },
   startDescription: {
     fontSize: 16,
     color: Colors.textLight,
     textAlign: 'center',
-    marginBottom: 30,
+    marginBottom: 40,
     lineHeight: 24,
+    paddingHorizontal: 20,
   },
   buttonContainer: {
     width: '100%',
@@ -905,8 +911,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   analyzingContainer: {
+    flex: 1,
     padding: 20,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 400,
   },
   capturedImage: {
     width: 250,
@@ -916,7 +925,7 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 30,
   },
   analyzingText: {
     fontSize: 18,
@@ -937,7 +946,9 @@ const styles = StyleSheet.create({
   resultHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
+    marginTop: 20,
+    paddingTop: 20,
   },
   resultImage: {
     width: 120,
@@ -978,22 +989,22 @@ const styles = StyleSheet.create({
     color: Colors.primary,
   },
   analysisCard: {
-    marginBottom: 20,
+    marginBottom: 16,
     padding: 20,
   },
   analysisGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 20,
+    gap: 12,
   },
   analysisItem: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 8,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
     backgroundColor: Colors.primary + '10',
     borderRadius: 12,
-    marginHorizontal: 4,
   },
   analysisItemLabel: {
     fontSize: 12,
@@ -1008,7 +1019,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   metricsCard: {
-    marginBottom: 20,
+    marginBottom: 16,
     padding: 20,
   },
   analysisTitle: {
@@ -1021,8 +1032,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
-    paddingBottom: 16,
+    marginBottom: 12,
+    paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
@@ -1036,15 +1047,15 @@ const styles = StyleSheet.create({
     color: Colors.primary,
   },
   metricsContainer: {
-    gap: 8,
+    gap: 16,
   },
   metricsLabel: {
     fontSize: 16,
     color: Colors.textDark,
-    marginTop: 8,
+    marginBottom: 8,
   },
   tipsCard: {
-    marginBottom: 20,
+    marginBottom: 16,
     padding: 20,
   },
   tipsHeader: {
@@ -1060,7 +1071,7 @@ const styles = StyleSheet.create({
   },
   tipItem: {
     flexDirection: 'row',
-    marginBottom: 12,
+    marginBottom: 16,
     alignItems: 'flex-start',
   },
   tipBullet: {

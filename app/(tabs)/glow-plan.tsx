@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, RefreshControl, ActivityIndicator } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { CheckCircle, Circle, Droplets, Moon, Dumbbell, Apple, Heart, Plus, Edit3, Bell, Trophy, Flame } from 'lucide-react-native';
 import * as Notifications from 'expo-notifications';
@@ -79,7 +79,9 @@ export default function GlowUpPlanScreen() {
             body: `Day ${day} of your 30-day plan is waiting for you!`,
             data: { day, planId: plan?.id },
           },
-          trigger: notificationDate,
+          trigger: {
+            date: notificationDate,
+          },
         });
       }
       
@@ -427,7 +429,10 @@ export default function GlowUpPlanScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={Colors.primary} style={{ marginBottom: 20 }} />
         <Text style={styles.loadingText}>Setting up your 30-day glow-up plan...</Text>
+        <Text style={styles.loadingSubtext}>Analyzing your skin data...</Text>
+        <Text style={styles.loadingSubtext}>Finding the perfect products for your glow-up journey.</Text>
       </View>
     );
   }
@@ -722,11 +727,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: Colors.background,
+    paddingHorizontal: 20,
+    minHeight: 400,
   },
   loadingText: {
-    fontSize: 16,
+    fontSize: 18,
+    color: Colors.textDark,
+    textAlign: 'center',
+    fontWeight: '600',
+    marginBottom: 16,
+  },
+  loadingSubtext: {
+    fontSize: 14,
     color: Colors.textLight,
     textAlign: 'center',
+    marginBottom: 8,
   },
   errorContainer: {
     flex: 1,
@@ -746,6 +761,7 @@ const styles = StyleSheet.create({
   },
   progressCard: {
     margin: 20,
+    marginTop: 16,
     padding: 20,
   },
   progressHeader: {
@@ -799,7 +815,7 @@ const styles = StyleSheet.create({
   },
   dayNavCard: {
     marginHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 16,
     padding: 16,
   },
   dayNavHeader: {
@@ -863,7 +879,7 @@ const styles = StyleSheet.create({
   },
   tasksCard: {
     marginHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 16,
     padding: 20,
   },
   tasksHeader: {
@@ -889,8 +905,8 @@ const styles = StyleSheet.create({
   taskItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 20,
-    paddingBottom: 20,
+    marginBottom: 16,
+    paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
@@ -927,10 +943,11 @@ const styles = StyleSheet.create({
   },
   productSection: {
     backgroundColor: Colors.background,
-    padding: 12,
-    borderRadius: 8,
+    padding: 16,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.border,
+    marginTop: 8,
   },
   productLabel: {
     fontSize: 12,
@@ -1000,7 +1017,7 @@ const styles = StyleSheet.create({
   },
   weeklyProgressCard: {
     marginHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 16,
     padding: 20,
   },
   weeklyProgressTitle: {
