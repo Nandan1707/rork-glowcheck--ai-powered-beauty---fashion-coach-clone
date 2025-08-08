@@ -5,13 +5,18 @@ import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StatusBar } from "expo-status-bar";
 import { AppState } from "react-native";
+import { StripeProvider } from '@stripe/stripe-react-native';
+import Constants from 'expo-constants';
 
 import { AuthContext } from "@/hooks/auth-store";
+import { SubscriptionContext } from "@/hooks/subscription-store";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { analyticsService } from "@/lib/analytics";
 import { errorHandler } from "@/lib/error-handler";
 import { storageService } from "@/lib/storage";
 import { logger } from "@/lib/logger";
+import stripeService from "@/lib/stripe-service";
+import subscriptionService from "@/lib/subscription-service";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -60,6 +65,22 @@ export default function RootLayout() {
           console.warn('App: Storage cleanup failed', storageError);
         }
         
+        // Initialize Stripe
+        try {
+          await stripeService.initialize();
+          logger.info('App: Stripe initialized');
+        } catch (stripeError) {
+          console.warn('App: Stripe initialization failed', stripeError);
+        }
+        
+        // Sync subscription status
+        try {
+          await subscriptionService.syncSubscriptionStatus();
+          logger.info('App: Subscription status synced');
+        } catch (subscriptionError) {
+          console.warn('App: Subscription sync failed', subscriptionError);
+        }
+        
         logger.info('App: Production services initialized successfully');
       } catch (error) {
         console.error('App: Failed to initialize services', error);
@@ -101,15 +122,26 @@ export default function RootLayout() {
     };
   }, []);
 
+  const stripePublishableKey = Constants.expoConfig?.extra?.stripePublishableKey || 
+                              process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || '';
+
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <AuthContext>
-          <GestureHandlerRootView style={{ flex: 1 }}>
-            <StatusBar style="dark" />
-            <RootLayoutNav />
-          </GestureHandlerRootView>
-        </AuthContext>
+        <StripeProvider
+          publishableKey={stripePublishableKey}
+          merchantIdentifier="merchant.com.glowapp"
+          urlScheme="glowapp"
+        >
+          <AuthContext>
+            <SubscriptionContext>
+              <GestureHandlerRootView style={{ flex: 1 }}>
+                <StatusBar style="dark" />
+                <RootLayoutNav />
+              </GestureHandlerRootView>
+            </SubscriptionContext>
+          </AuthContext>
+        </StripeProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );

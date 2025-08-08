@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import type { Href } from 'expo-router';
 
 import { useAuth } from '@/hooks/auth-store';
+import { usePremiumAccess } from '@/hooks/subscription-store';
 import Button from '@/components/Button';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import PremiumModal from '@/components/PremiumModal';
 import { COLORS } from '@/constants/colors';
 
 interface RouteGuardProps {
@@ -25,11 +27,15 @@ export default function RouteGuard({
 }: RouteGuardProps) {
   const { 
     isAuthenticated, 
-    isLoading, 
+    isLoading: authLoading, 
     hasCompletedScan, 
-    checkPremiumAccess,
     user: _user 
   } = useAuth();
+  
+  const { hasPremiumAccess, isLoading: premiumLoading } = usePremiumAccess();
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
+  
+  const isLoading = authLoading || premiumLoading;
 
   if (isLoading) {
     return (
@@ -67,7 +73,7 @@ export default function RouteGuard({
         </Text>
         <Button
           title="Start Glow Scan"
-          onPress={() => router.push('/(tabs)/glow-analysis' as Href)}
+          onPress={() => router.push('/(tabs)/glow-analysis')}
           style={styles.guardButton}
         />
       </View>
@@ -75,19 +81,30 @@ export default function RouteGuard({
   }
 
   // Check premium requirement
-  if (requirePremium && !checkPremiumAccess('Premium Feature')) {
+  if (requirePremium && !hasPremiumAccess) {
     return (
-      <View style={styles.guardContainer}>
-        <Text style={styles.guardTitle}>Premium Feature</Text>
-        <Text style={styles.guardMessage}>
-          Upgrade to Premium to access this feature and unlock your full glow potential.
-        </Text>
-        <Button
-          title="Upgrade to Premium"
-          onPress={() => router.push('/(tabs)/profile' as Href)}
-          style={styles.guardButton}
+      <>
+        <View style={styles.guardContainer}>
+          <Text style={styles.guardTitle}>Premium Feature</Text>
+          <Text style={styles.guardMessage}>
+            Upgrade to Premium to access this feature and unlock your full glow potential.
+          </Text>
+          <Button
+            title="Upgrade to Premium"
+            onPress={() => setShowPremiumModal(true)}
+            style={styles.guardButton}
+          />
+        </View>
+        
+        <PremiumModal
+          visible={showPremiumModal}
+          onClose={() => setShowPremiumModal(false)}
+          onSuccess={() => {
+            setShowPremiumModal(false);
+            // The component will re-render and show children once premium access is granted
+          }}
         />
-      </View>
+      </>
     );
   }
 

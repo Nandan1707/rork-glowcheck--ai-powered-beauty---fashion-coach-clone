@@ -6,13 +6,15 @@ import { Target, CheckCircle, Circle, Calendar, Trophy, Sparkles, Crown } from '
 import Button from '@/components/Button';
 import Card from '@/components/Card';
 import ProgressBar from '@/components/ProgressBar';
-import PremiumModal from '@/components/PremiumModal';
+import RouteGuard from '@/components/RouteGuard';
 import { COLORS } from '@/constants/colors';
 import { aiService, CoachingPlan, DailyTask } from '@/lib/ai-service';
 import { useAuth } from '@/hooks/auth-store';
+import { useSubscription } from '@/hooks/subscription-store';
 
 export default function CoachingScreen() {
-  const { isPremium, startFreeTrial, subscriptionLoading } = useAuth();
+  const { hasCompletedScan } = useAuth();
+  const { hasPremiumAccess } = useSubscription();
   const params = useLocalSearchParams();
   const [currentPlan, setCurrentPlan] = useState<CoachingPlan | null>(null);
   const [loading, setLoading] = useState(false);
@@ -20,7 +22,6 @@ export default function CoachingScreen() {
   const [showGoalSelection, setShowGoalSelection] = useState(true);
   const [todaysTasks, setTodaysTasks] = useState<DailyTask[]>([]);
   const [currentDay, setCurrentDay] = useState(1);
-  const [showPremiumModal, setShowPremiumModal] = useState(false);
 
   const goals = [
     'Improve skin hydration and glow',
@@ -33,12 +34,7 @@ export default function CoachingScreen() {
 
   // Handle auto-generation from glow analysis
   useEffect(() => {
-    if (params.autoGenerate === 'true' && params.goal && params.glowScore) {
-      if (!isPremium) {
-        setShowPremiumModal(true);
-        return;
-      }
-      
+    if (params.autoGenerate === 'true' && params.goal && params.glowScore && hasPremiumAccess) {
       setSelectedGoal(params.goal as string);
       const autoGeneratePlan = async () => {
         const planGoal = params.goal as string;
@@ -59,7 +55,7 @@ export default function CoachingScreen() {
       
       autoGeneratePlan();
     }
-  }, [params, isPremium]);
+  }, [params, hasPremiumAccess]);
 
   useEffect(() => {
     if (currentPlan) {
@@ -76,26 +72,15 @@ export default function CoachingScreen() {
 
   const generatePlan = async (goal?: string, glowScore?: number) => {
     const planGoal = goal || selectedGoal;
-    console.log('Generating plan with goal:', planGoal);
-    console.log('isPremium:', isPremium);
-    console.log('showPremiumModal:', showPremiumModal);
     
     if (!planGoal) {
       Alert.alert('No Goal Selected', 'Please select a goal before creating your plan.');
       return;
     }
     
-    if (!isPremium) {
-      console.log('User is not premium, showing premium modal');
-      setShowPremiumModal(true);
-      return;
-    }
-    
     setLoading(true);
     try {
-      console.log('Calling AI service to generate plan...');
       const plan = await aiService.generateCoachingPlan(planGoal, glowScore || 75);
-      console.log('Plan generated successfully:', plan);
       setCurrentPlan(plan);
       setShowGoalSelection(false);
       
@@ -152,24 +137,7 @@ export default function CoachingScreen() {
     setTodaysTasks([]);
   };
 
-  const handleUpgrade = async () => {
-    const result = await startFreeTrial();
-    
-    if (result.success) {
-      Alert.alert(
-        'Free Trial Started! 🎉',
-        'Welcome to Premium! You now have 7 days of free access to all premium features.',
-        [{ text: 'Get Started', style: 'default' }]
-      );
-      
-      // If there was a selected goal, generate the plan after upgrade
-      if (selectedGoal) {
-        setTimeout(() => generatePlan(), 500);
-      }
-    } else {
-      Alert.alert('Error', result.error || 'Failed to start free trial. Please try again.');
-    }
-  };
+
 
   const renderTask = ({ item }: { item: DailyTask }) => (
     <TouchableOpacity
@@ -199,89 +167,75 @@ export default function CoachingScreen() {
 
   if (showGoalSelection) {
     return (
-      <ScrollView style={styles.container}>
-        <Stack.Screen options={{ title: 'Beauty Coaching' }} />
-        
-        <View style={styles.goalSelectionContainer}>
-          <View style={styles.headerContainer}>
-            <View style={styles.titleContainer}>
-              <Sparkles size={32} color={COLORS.primary} />
-              <Text style={styles.title}>Your Beauty Journey</Text>
-              {isPremium && (
-                <View style={styles.premiumBadge}>
-                  <Crown size={16} color={COLORS.gold} />
-                  <Text style={styles.premiumText}>Premium</Text>
-                </View>
-              )}
+      <RouteGuard requireAuth requireScan requirePremium>
+        <ScrollView style={styles.container}>
+          <Stack.Screen options={{ title: 'Beauty Coaching' }} />
+          
+          <View style={styles.goalSelectionContainer}>
+            <View style={styles.headerContainer}>
+              <View style={styles.titleContainer}>
+                <Sparkles size={32} color={COLORS.primary} />
+                <Text style={styles.title}>Your Beauty Journey</Text>
+                {hasPremiumAccess && (
+                  <View style={styles.premiumBadge}>
+                    <Crown size={16} color={COLORS.gold} />
+                    <Text style={styles.premiumText}>Premium</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.subtitle}>
+                Choose your goal and get a personalized 30-day coaching plan
+              </Text>
             </View>
-            <Text style={styles.subtitle}>
-              Choose your goal and get a personalized 30-day coaching plan
-            </Text>
+
+            <Card style={styles.goalCard}>
+              <Text style={styles.goalCardTitle}>What&apos;s your main goal?</Text>
+              
+              {goals.map((goal, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.goalOption,
+                    selectedGoal === goal && styles.goalOptionSelected,
+                  ]}
+                  onPress={() => setSelectedGoal(goal)}
+                >
+                  <View style={[
+                    styles.goalRadio,
+                    selectedGoal === goal && styles.goalRadioSelected,
+                  ]}>
+                    {selectedGoal === goal && <View style={styles.goalRadioInner} />}
+                  </View>
+                  <Text style={[
+                    styles.goalText,
+                    selectedGoal === goal && styles.goalTextSelected,
+                  ]}>
+                    {goal}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </Card>
+
+            <Button
+              title={loading ? 'Generating Plan...' : 'Create My Plan'}
+              onPress={() => generatePlan()}
+              disabled={!selectedGoal || loading}
+              isLoading={loading}
+              style={styles.generateButton}
+              leftIcon={<Target size={18} color={COLORS.white} />}
+              testID="create-my-plan-button"
+            />
           </View>
-
-          <Card style={styles.goalCard}>
-            <Text style={styles.goalCardTitle}>What&apos;s your main goal?</Text>
-            
-            {goals.map((goal, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[
-                  styles.goalOption,
-                  selectedGoal === goal && styles.goalOptionSelected,
-                ]}
-                onPress={() => setSelectedGoal(goal)}
-              >
-                <View style={[
-                  styles.goalRadio,
-                  selectedGoal === goal && styles.goalRadioSelected,
-                ]}>
-                  {selectedGoal === goal && <View style={styles.goalRadioInner} />}
-                </View>
-                <Text style={[
-                  styles.goalText,
-                  selectedGoal === goal && styles.goalTextSelected,
-                ]}>
-                  {goal}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </Card>
-
-          <Button
-            title={loading ? 'Generating Plan...' : 'Create My Plan'}
-            onPress={() => {
-              console.log('Create My Plan button pressed');
-              console.log('selectedGoal:', selectedGoal);
-              generatePlan();
-            }}
-            disabled={!selectedGoal || loading}
-            isLoading={loading}
-            style={styles.generateButton}
-            leftIcon={<Target size={18} color={COLORS.white} />}
-            testID="create-my-plan-button"
-          />
-        </View>
-
-        <PremiumModal
-          visible={showPremiumModal}
-          onClose={() => setShowPremiumModal(false)}
-          onUpgrade={handleUpgrade}
-          isLoading={subscriptionLoading}
-          onSuccess={() => {
-            setShowPremiumModal(false);
-            if (selectedGoal) {
-              setTimeout(() => generatePlan(), 500);
-            }
-          }}
-        />
-      </ScrollView>
+        </ScrollView>
+      </RouteGuard>
     );
   }
 
   if (!currentPlan) return null;
 
   return (
-    <ScrollView style={styles.container}>
+    <RouteGuard requireAuth requireScan requirePremium>
+      <ScrollView style={styles.container}>
       <Stack.Screen 
         options={{ 
           title: 'My Coaching Plan',
@@ -367,7 +321,8 @@ export default function CoachingScreen() {
           ))}
         </Card>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </RouteGuard>
   );
 }
 

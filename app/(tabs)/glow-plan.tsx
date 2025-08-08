@@ -9,6 +9,7 @@ import Button from '@/components/Button';
 import Card from '@/components/Card';
 import ProgressBar from '@/components/ProgressBar';
 import Input from '@/components/Input';
+import RouteGuard from '@/components/RouteGuard';
 import Colors from '@/constants/colors';
 import { useAuth } from '@/hooks/auth-store';
 import { GlowUpPlan, GlowUpDayTask, GlowUpProgress } from '@/types';

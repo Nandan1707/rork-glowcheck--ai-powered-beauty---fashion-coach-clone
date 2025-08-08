@@ -19,7 +19,11 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera",
         "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone",
-        "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos"
+        "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos",
+        "CFBundleAllowMixedLocalizations": true,
+        "CFBundleLocalizations": [
+          "fr"
+        ]
       }
     },
     "android": {
@@ -73,6 +77,13 @@
             "./local/assets/notification_sound.wav"
           ],
           "enableBackgroundRemoteNotifications": false
+        }
+      ],
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "string | string[]",
+          "enableGooglePay": "boolean"
         }
       ]
     ],

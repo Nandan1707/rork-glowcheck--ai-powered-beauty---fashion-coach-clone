@@ -2,6 +2,8 @@ import { Alert, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { logger } from './logger';
 import { errorHandler } from './error-handler';
+import stripeService from './stripe-service';
+import { supabase } from './supabase';
 
 export interface SubscriptionPlan {
   id: string;
@@ -11,6 +13,7 @@ export interface SubscriptionPlan {
   duration: 'monthly' | 'yearly';
   features: string[];
   trialDays?: number;
+  stripePriceId?: string;
 }
 
 export interface SubscriptionStatus {
@@ -19,6 +22,8 @@ export interface SubscriptionStatus {
   expiresAt?: Date;
   isTrialActive?: boolean;
   trialExpiresAt?: Date;
+  stripeSubscriptionId?: string;
+  stripeCustomerId?: string;
 }
 
 class SubscriptionService {
@@ -33,6 +38,7 @@ class SubscriptionService {
       currency: 'USD',
       duration: 'monthly',
       trialDays: 7,
+      stripePriceId: 'price_monthly_premium', // Will be set after Stripe setup
       features: [
         'Personalized AI Plans',
         'Advanced Analysis',
@@ -48,6 +54,7 @@ class SubscriptionService {
       currency: 'USD',
       duration: 'yearly',
       trialDays: 7,
+      stripePriceId: 'price_yearly_premium', // Will be set after Stripe setup
       features: [
         'Personalized AI Plans',
         'Advanced Analysis',
@@ -101,9 +108,9 @@ class SubscriptionService {
     }
   }
 
-  async startFreeTrial(planId: string = 'premium_monthly'): Promise<{ success: boolean; error?: string }> {
+  async startFreeTrial(planId: string = 'premium_monthly'): Promise<{ success: boolean; error?: string; clientSecret?: string }> {
     try {
-      logger.info('Starting free trial', { planId });
+      logger.info('Starting free trial with Stripe', { planId });
       
       // Check if trial was already used
       const existingTrial = await AsyncStorage.getItem(this.TRIAL_STORAGE_KEY);
@@ -118,15 +125,39 @@ class SubscriptionService {
       }
       
       const plan = this.plans.find(p => p.id === planId);
-      if (!plan || !plan.trialDays) {
+      if (!plan || !plan.trialDays || !plan.stripePriceId) {
         return {
           success: false,
           error: 'Trial not available for this plan.'
         };
       }
+
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) {
+        return {
+          success: false,
+          error: 'User not authenticated. Please log in to start trial.'
+        };
+      }
+
+      // Initialize Stripe
+      await stripeService.initialize();
       
-      // Simulate subscription API call
-      await this.simulateSubscriptionAPI('start_trial', { planId });
+      // Create or get Stripe customer
+      let customerId = await this.getStoredCustomerId();
+      if (!customerId) {
+        const customer = await stripeService.createCustomer(user.email, user.user_metadata?.name);
+        customerId = customer.id;
+        await this.storeCustomerId(customerId);
+      }
+
+      // Create subscription with trial
+      const subscription = await stripeService.createSubscription(
+        customerId,
+        plan.stripePriceId,
+        plan.trialDays
+      );
       
       const trialExpiresAt = new Date();
       trialExpiresAt.setDate(trialExpiresAt.getDate() + plan.trialDays);
@@ -136,14 +167,23 @@ class SubscriptionService {
         planId,
         startedAt: new Date().toISOString(),
         expiresAt: trialExpiresAt.toISOString(),
-        used: true
+        used: true,
+        stripeSubscriptionId: subscription.subscriptionId,
+        stripeCustomerId: customerId
       };
       
       await AsyncStorage.setItem(this.TRIAL_STORAGE_KEY, JSON.stringify(trialStatus));
       
-      logger.info('Free trial started successfully', { planId, expiresAt: trialExpiresAt });
+      logger.info('Free trial started successfully with Stripe', { 
+        planId, 
+        expiresAt: trialExpiresAt,
+        subscriptionId: subscription.subscriptionId
+      });
       
-      return { success: true };
+      return { 
+        success: true, 
+        clientSecret: subscription.clientSecret 
+      };
     } catch (error) {
       const errorMessage = 'Failed to start free trial. Please try again.';
       logger.error('Error starting free trial', { error, planId });
@@ -156,20 +196,43 @@ class SubscriptionService {
     }
   }
 
-  async subscribeToPlan(planId: string): Promise<{ success: boolean; error?: string }> {
+  async subscribeToPlan(planId: string): Promise<{ success: boolean; error?: string; clientSecret?: string }> {
     try {
-      logger.info('Starting subscription', { planId });
+      logger.info('Starting subscription with Stripe', { planId });
       
       const plan = this.plans.find(p => p.id === planId);
-      if (!plan) {
+      if (!plan || !plan.stripePriceId) {
         return {
           success: false,
-          error: 'Plan not found.'
+          error: 'Plan not found or not configured properly.'
         };
       }
+
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) {
+        return {
+          success: false,
+          error: 'User not authenticated. Please log in to subscribe.'
+        };
+      }
+
+      // Initialize Stripe
+      await stripeService.initialize();
       
-      // Simulate subscription API call
-      await this.simulateSubscriptionAPI('subscribe', { planId });
+      // Create or get Stripe customer
+      let customerId = await this.getStoredCustomerId();
+      if (!customerId) {
+        const customer = await stripeService.createCustomer(user.email, user.user_metadata?.name);
+        customerId = customer.id;
+        await this.storeCustomerId(customerId);
+      }
+
+      // Create subscription
+      const subscription = await stripeService.createSubscription(
+        customerId,
+        plan.stripePriceId
+      );
       
       const expiresAt = new Date();
       if (plan.duration === 'monthly') {
@@ -181,7 +244,9 @@ class SubscriptionService {
       const subscriptionStatus: SubscriptionStatus = {
         isActive: true,
         plan,
-        expiresAt
+        expiresAt,
+        stripeSubscriptionId: subscription.subscriptionId,
+        stripeCustomerId: customerId
       };
       
       await AsyncStorage.setItem(this.STORAGE_KEY, JSON.stringify({
@@ -189,9 +254,16 @@ class SubscriptionService {
         expiresAt: expiresAt.toISOString()
       }));
       
-      logger.info('Subscription successful', { planId, expiresAt });
+      logger.info('Subscription created successfully with Stripe', { 
+        planId, 
+        expiresAt,
+        subscriptionId: subscription.subscriptionId
+      });
       
-      return { success: true };
+      return { 
+        success: true, 
+        clientSecret: subscription.clientSecret 
+      };
     } catch (error) {
       const errorMessage = 'Subscription failed. Please try again.';
       logger.error('Error subscribing to plan', { error, planId });
@@ -208,8 +280,10 @@ class SubscriptionService {
     try {
       logger.info('Cancelling subscription');
       
-      // Simulate API call
-      await this.simulateSubscriptionAPI('cancel', {});
+      const status = await this.getSubscriptionStatus();
+      if (status.stripeSubscriptionId) {
+        await stripeService.cancelSubscription(status.stripeSubscriptionId);
+      }
       
       await AsyncStorage.removeItem(this.STORAGE_KEY);
       
@@ -235,16 +309,71 @@ class SubscriptionService {
     return this.plans.find(p => p.id === planId);
   }
 
-  private async simulateSubscriptionAPI(action: string, data: any): Promise<void> {
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 1000));
-    
-    // Simulate occasional failures (5% chance)
-    if (Math.random() < 0.05) {
-      throw new Error(`Simulated ${action} API failure`);
+  private async getStoredCustomerId(): Promise<string | null> {
+    try {
+      return await AsyncStorage.getItem('stripe_customer_id');
+    } catch (error) {
+      logger.error('Error getting stored customer ID', { error });
+      return null;
     }
-    
-    logger.info('Subscription API call successful', { action, data });
+  }
+
+  private async storeCustomerId(customerId: string): Promise<void> {
+    try {
+      await AsyncStorage.setItem('stripe_customer_id', customerId);
+    } catch (error) {
+      logger.error('Error storing customer ID', { error });
+    }
+  }
+
+  async syncSubscriptionStatus(): Promise<void> {
+    try {
+      const status = await this.getSubscriptionStatus();
+      if (status.stripeSubscriptionId) {
+        const stripeSubscription = await stripeService.getSubscription(status.stripeSubscriptionId);
+        
+        // Update local status based on Stripe data
+        const isActive = stripeSubscription.status === 'active' || stripeSubscription.status === 'trialing';
+        const expiresAt = new Date(stripeSubscription.current_period_end * 1000);
+        
+        const updatedStatus: SubscriptionStatus = {
+          ...status,
+          isActive,
+          expiresAt
+        };
+        
+        await AsyncStorage.setItem(this.STORAGE_KEY, JSON.stringify({
+          ...updatedStatus,
+          expiresAt: expiresAt.toISOString()
+        }));
+        
+        logger.info('Subscription status synced with Stripe', { 
+          subscriptionId: status.stripeSubscriptionId,
+          isActive,
+          expiresAt
+        });
+      }
+    } catch (error) {
+      logger.error('Error syncing subscription status', { error });
+    }
+  }
+
+  async setupStripeProducts(): Promise<void> {
+    try {
+      const { monthlyPriceId, yearlyPriceId } = await stripeService.setupProducts();
+      
+      // Update plans with actual Stripe price IDs
+      this.plans[0].stripePriceId = monthlyPriceId;
+      this.plans[1].stripePriceId = yearlyPriceId;
+      
+      logger.info('Stripe products set up and plans updated', {
+        monthlyPriceId,
+        yearlyPriceId
+      });
+    } catch (error) {
+      logger.error('Error setting up Stripe products', { error });
+      throw error;
+    }
   }
 
   // Helper method to check if user has premium access
@@ -265,6 +394,33 @@ class SubscriptionService {
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
     return Math.max(0, diffDays);
+  }
+
+  // Method to confirm payment after Stripe payment succeeds
+  async confirmPayment(subscriptionId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      logger.info('Confirming payment', { subscriptionId });
+      
+      // Sync with Stripe to get latest status
+      await this.syncSubscriptionStatus();
+      
+      const status = await this.getSubscriptionStatus();
+      if (status.isActive) {
+        logger.info('Payment confirmed and subscription activated', { subscriptionId });
+        return { success: true };
+      } else {
+        return {
+          success: false,
+          error: 'Payment confirmation failed. Please contact support.'
+        };
+      }
+    } catch (error) {
+      logger.error('Error confirming payment', { error, subscriptionId });
+      return {
+        success: false,
+        error: 'Failed to confirm payment. Please try again.'
+      };
+    }
   }
 }
 

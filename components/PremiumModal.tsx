@@ -6,37 +6,50 @@ import {
   Modal,
   TouchableOpacity,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { X, Crown, Check, Sparkles, Zap, Shield } from 'lucide-react-native';
 
 import Button from '@/components/Button';
 import { COLORS } from '@/constants/colors';
+import { useSubscription } from '@/hooks/subscription-store';
 
 interface PremiumModalProps {
   visible: boolean;
   onClose: () => void;
-  onUpgrade: () => Promise<void>;
-  isLoading?: boolean;
   onSuccess?: () => void;
 }
 
 
 
-export default function PremiumModal({ visible, onClose, onUpgrade, isLoading = false, onSuccess }: PremiumModalProps) {
-  const [upgrading, setUpgrading] = React.useState(false);
+export default function PremiumModal({ visible, onClose, onSuccess }: PremiumModalProps) {
+  const { startFreeTrial, isLoading, error, clearError } = useSubscription();
   
   const handleUpgrade = async () => {
-    setUpgrading(true);
     try {
-      await onUpgrade();
+      clearError();
+      await startFreeTrial('premium_monthly');
       onSuccess?.();
       onClose();
-    } catch (error) {
-      console.error('Upgrade failed:', error);
-    } finally {
-      setUpgrading(false);
+    } catch (err) {
+      console.error('Upgrade failed:', err);
+      Alert.alert(
+        'Upgrade Failed',
+        'There was an issue starting your free trial. Please try again.',
+        [{ text: 'OK' }]
+      );
     }
   };
+  
+  React.useEffect(() => {
+    if (error) {
+      Alert.alert(
+        'Error',
+        error,
+        [{ text: 'OK', onPress: clearError }]
+      );
+    }
+  }, [error, clearError]);
   const features = [
     {
       icon: <Sparkles size={20} color={COLORS.gold} />,
@@ -130,10 +143,10 @@ export default function PremiumModal({ visible, onClose, onUpgrade, isLoading = 
 
         <View style={styles.footer}>
           <Button
-            title={(isLoading || upgrading) ? 'Starting Trial...' : 'Start Free Trial'}
+            title={isLoading ? 'Starting Trial...' : 'Start Free Trial'}
             onPress={handleUpgrade}
-            disabled={isLoading || upgrading}
-            isLoading={isLoading || upgrading}
+            disabled={isLoading}
+            isLoading={isLoading}
             style={styles.upgradeButton}
             leftIcon={<Crown size={18} color={COLORS.white} />}
             testID="upgrade-to-premium-button"
