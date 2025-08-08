@@ -57,6 +57,13 @@ export const CONFIG = {
     MAX_IMAGE_SIZE: 10 * 1024 * 1024, // 10MB
     CACHE_EXPIRY: 7 * 24 * 60 * 60 * 1000, // 7 days
   },
+  
+  // Stripe Configuration
+  STRIPE: {
+    PUBLISHABLE_KEY: Constants.expoConfig?.extra?.stripePublishableKey || process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
+    // Note: Secret key should never be used in client-side code
+    // For server-side operations, use a backend API
+  },
 };
 
 // Validation function to check required configuration
